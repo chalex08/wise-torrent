@@ -10,5 +10,6 @@ namespace WiseTorrent.Parsing.Interfaces
 {
 	public interface ITorrentParser
 	{
+		TorrentMetadata? ParseTorrentFileFromPath(string path);
 	}
 }

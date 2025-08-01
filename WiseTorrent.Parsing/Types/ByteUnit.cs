@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace WiseTorrent.Parsing.Types
 {
-    internal enum ByteUnit
-    {
-    }
+	public enum ByteUnit
+	{
+		Byte = 1,
+		Kibibyte = 1024,
+		Mebibyte = 1048576
+	}
 }
