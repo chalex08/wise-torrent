@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
+  </ItemGroup>
+
 </Project>
