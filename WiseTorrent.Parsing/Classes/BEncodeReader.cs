@@ -13,7 +13,7 @@ namespace WiseTorrent.Parsing.Classes
 			return ParseTorrentFileFromStream(stream);
 		}
 
-		BDictionary? ParseTorrentFileFromStream(Stream stream)
+		private BDictionary? ParseTorrentFileFromStream(Stream stream)
 		{
 			try
 			{
@@ -27,11 +27,6 @@ namespace WiseTorrent.Parsing.Classes
 				Console.WriteLine(e.ToString());
 				return null;
 			}
-		}
-
-		BDictionary? IBEncodeReader.ParseTorrentFileFromStream(Stream stream)
-		{
-			return ParseTorrentFileFromStream(stream);
 		}
 	}
 }

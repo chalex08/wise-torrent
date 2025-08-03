@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WiseTorrent.Trackers;
 using WiseTorrent.Trackers.Types;
 
@@ -10,21 +7,17 @@ namespace WiseTorrent.Parsing.Types
 {
 	public class TorrentMetadata
 	{
-		public PeerDiscoveryProtocol protocol;
-		public string? announce;
-		public TorrentInfo info;
+		public ServerURL? Announce { get; set; }
+		public List<List<ServerURL>>? AnnounceList { get; set; }
+		public string? Comment { get; set; }
+		public string? CreatedBy { get; set; }
+		public DateTime? CreationDate { get; set; }
+		public string? Encoding { get; set; }
+		public List<ServerURL>? UrlList { get; set; }
+		public List<ServerURL>? HttpSeeds { get; set; }
+		public bool? IsPrivate { get; set; }
+		public string? Source { get; set; }
 
-		public TorrentMetadata(PeerDiscoveryProtocol protocol, string announce, TorrentInfo info)
-		{
-			this.protocol = protocol;
-			this.announce = announce;
-			this.info = info;
-		}
-
-		public TorrentMetadata(TorrentInfo info)
-		{
-			protocol = PeerDiscoveryProtocol.DHT;
-			this.info = info;
-		}
+		public required TorrentInfo Info { get; set; }
 	}
 }

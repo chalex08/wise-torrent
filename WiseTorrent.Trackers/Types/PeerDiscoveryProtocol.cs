@@ -10,6 +10,8 @@ namespace WiseTorrent.Trackers.Types
     {
         HTTP,
         UDP,
-        DHT
+        DHT,
+        WS,
+        INVALID
     }
 }

@@ -10,6 +10,5 @@ namespace WiseTorrent.Parsing.Interfaces
 	public interface IBEncodeReader
 	{
 		BDictionary? ParseTorrentFileFromPath(string path);
-		BDictionary? ParseTorrentFileFromStream(Stream stream);
 	}
 }

@@ -8,34 +8,34 @@ namespace WiseTorrent.Parsing.Types
 {
 	public class ByteSize
 	{
-		public ByteUnit unit;
-		public double size;
+		public ByteUnit Unit;
+		public double Size;
 
 		public ByteSize(ByteUnit unit, double size)
 		{
 			if (size < 0) throw new ArgumentOutOfRangeException(nameof(size));
-			this.unit = unit;
-			this.size = size;
+			this.Unit = unit;
+			this.Size = size;
 		}
 
 		public ByteSize(double sizeInBytes)
 		{
 			if (sizeInBytes < 0) throw new ArgumentOutOfRangeException(nameof(sizeInBytes));
-			else if (sizeInBytes < (long)ByteUnit.Kibibyte) unit = ByteUnit.Byte;
-			else if (sizeInBytes < (long)ByteUnit.Mebibyte) unit = ByteUnit.Kibibyte;
-			else unit = ByteUnit.Mebibyte;
-			size = sizeInBytes / (long)unit;
+			else if (sizeInBytes < (long)ByteUnit.Kibibyte) Unit = ByteUnit.Byte;
+			else if (sizeInBytes < (long)ByteUnit.Mebibyte) Unit = ByteUnit.Kibibyte;
+			else Unit = ByteUnit.Mebibyte;
+			Size = sizeInBytes / (long)Unit;
 		}
 
 		public void ConvertUnit(ByteUnit newUnit)
 		{
-			size *= (long)unit / (long)newUnit;
-			unit = newUnit;
+			Size *= (long)Unit / (long)newUnit;
+			Unit = newUnit;
 		}
 
 		public override string ToString()
 		{
-			return $"{size:D3} {unit.ToString()}";
+			return $"{Size:D3} {Unit.ToString()}";
 		}
 	}
 }
