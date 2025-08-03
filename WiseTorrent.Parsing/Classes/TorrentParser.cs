@@ -7,16 +7,9 @@ namespace WiseTorrent.Parsing.Classes
 {
 	internal class TorrentParser : ITorrentParser
 	{
-		private readonly IBEncodeReader _bEncodeReader;
-
-		public TorrentParser(IBEncodeReader bEncodeReader)
-		{
-			_bEncodeReader = bEncodeReader;
-		}
-
 		public TorrentMetadata? ParseTorrentFileFromPath(string path)
 		{
-			BDictionary? decodedDict = _bEncodeReader.ParseTorrentFileFromPath(path);
+			BDictionary? decodedDict = BEncodeReader.ParseTorrentFileFromPath(path);
 			return decodedDict == null ? null : BuildTorrentMetadata(decodedDict);
 		}
 
