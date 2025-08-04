@@ -19,7 +19,7 @@ namespace WiseTorrent.UI;
 /// </summary>
 public partial class MainWindow : Window
 {
-	public static MainWindow Instance { get; private set; }
+	public static MainWindow? Instance { get; private set; }
 	private readonly FullscreenStateService _fullscreenService;
 
 	public MainWindow()

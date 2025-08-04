@@ -29,7 +29,7 @@
 		FullscreenService.OnChange += StateHasChanged;
 	}
 
-	void ToggleFullscreen() => MainWindow.Instance.ToggleFullscreen();
+	void ToggleFullscreen() => MainWindow.Instance?.ToggleFullscreen();
 
 	public void Dispose()
 	{
