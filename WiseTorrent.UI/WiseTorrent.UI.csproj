@@ -20,6 +20,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- Razor component support -->
 		<Content Update="wwwroot\**\*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -16,19 +16,14 @@ namespace WiseTorrent.Utilities.Injector
 {
 	public static class ServiceConfig
 	{
-		public static IServiceProvider ConfigureServices()
+		public static void ConfigureServices(IServiceCollection services)
 		{
-			var services = new ServiceCollection();
-
 			services.AddSingleton<ILogger, ConsoleLogger>();
 			services.AddParsingDependencies();
 			services.AddPeersDependencies();
 			services.AddPiecesDependencies();
 			services.AddStorageDependencies();
 			services.AddTrackersDependencies();
-			
-			return services.BuildServiceProvider();
 		}
-
 	}
 }

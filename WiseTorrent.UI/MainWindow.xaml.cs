@@ -9,6 +9,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Extensions.DependencyInjection;
+using WiseTorrent.UI.Services;
 
 namespace WiseTorrent.UI;
 
@@ -17,15 +19,44 @@ namespace WiseTorrent.UI;
 /// </summary>
 public partial class MainWindow : Window
 {
-    public MainWindow()
-    {
-        InitializeComponent();
-		var blazorWebView = this.FindName("BlazorHost") as BlazorWebView;
-		if (blazorWebView != null)
+	public static MainWindow Instance { get; private set; }
+	private readonly FullscreenStateService _fullscreenService;
+
+	public MainWindow()
+	{
+		InitializeComponent();
+		if (FindName("BlazorHost") is BlazorWebView blazorWebView)
 		{
 			blazorWebView.Services = ((App)Application.Current).Services;
 		}
 
-		Console.WriteLine("MainWindow loaded");
+		Instance = this;
+		_fullscreenService = ((App)Application.Current).Services.GetRequiredService<FullscreenStateService>();
 	}
+
+	protected override void OnKeyDown(KeyEventArgs e)
+	{
+		if (e.Key == Key.F11)
+		{
+			ToggleFullscreen();
+		}
+		base.OnKeyDown(e);
+	}
+
+	public void ToggleFullscreen()
+	{
+		_fullscreenService.Toggle();
+
+		if (_fullscreenService.IsFullscreen)
+		{
+			ResizeMode = ResizeMode.NoResize;
+			WindowState = WindowState.Maximized;
+		}
+		else
+		{
+			ResizeMode = ResizeMode.CanResize;
+			WindowState = WindowState.Normal;
+		}
+	}
+
 }

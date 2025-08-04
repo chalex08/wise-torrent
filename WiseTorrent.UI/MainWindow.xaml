@@ -4,7 +4,10 @@
         xmlns:blazor="clr-namespace:Microsoft.AspNetCore.Components.WebView.Wpf;assembly=Microsoft.AspNetCore.Components.WebView.Wpf"
         xmlns:components="clr-namespace:WiseTorrent.UI.Components"
 		Icon="/Assets/WTGICON.ico"
-        Title="WiseTorrent" Height="600" Width="900">
+        Title="WiseTorrent"
+        Height="600"
+        Width="900"
+        WindowStyle="None">
 	<Grid>
 		<blazor:BlazorWebView x:Name="BlazorHost" HostPage="wwwroot/index.html">
 			<blazor:BlazorWebView.RootComponents>

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Components.WebView.Wpf;
+using WiseTorrent.Utilities.Injector;
 using System.Windows;
+using WiseTorrent.UI.Services;
 
 namespace WiseTorrent.UI
 {
@@ -12,8 +13,9 @@ namespace WiseTorrent.UI
 		protected override void OnStartup(StartupEventArgs e)
 		{
 			var serviceCollection = new ServiceCollection();
+			ServiceConfig.ConfigureServices(serviceCollection);
+			UIServiceConfig.ConfigureServices(serviceCollection);
 			serviceCollection.AddWpfBlazorWebView();
-			// Register your services here
 			Services = serviceCollection.BuildServiceProvider();
 
 			var mainWindow = new MainWindow();
