@@ -1,9 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WiseTorrent.Parsing.Interfaces;
 using WiseTorrent.Peers.Interfaces;
 using WiseTorrent.Pieces.Interfaces;
@@ -18,7 +13,8 @@ namespace WiseTorrent.Utilities.Injector
 	{
 		public static void ConfigureServices(IServiceCollection services)
 		{
-			services.AddSingleton<ILogger, ConsoleLogger>();
+			services.AddSingleton(typeof(ILogger<>), typeof(BufferLogger<>));
+			services.AddSingleton<ILogService, LogService>();
 			services.AddParsingDependencies();
 			services.AddPeersDependencies();
 			services.AddPiecesDependencies();

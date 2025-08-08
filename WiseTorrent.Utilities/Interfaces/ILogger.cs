@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace WiseTorrent.Utilities.Interfaces
 {
-    public interface ILogger
+    public interface ILogger<T>
     {
         void Info(string message);
         void Warn(string message);
-        void Error(string message);
+        void Error(string message, Exception? exception);
     }
 }
