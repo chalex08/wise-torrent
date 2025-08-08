@@ -58,7 +58,7 @@ namespace WiseTorrent.Parsing.Builders
 			return outer
 				.OfType<BList>()
 				.Select(tier => tier
-					.Select(url => TryGetServerURL(url.ToString() ?? ""))
+					.Select(url => new ServerURL(url.ToString() ?? ""))
 					.Where(server => server.Protocol != PeerDiscoveryProtocol.INVALID)
 					.ToList()
 				)
@@ -71,7 +71,7 @@ namespace WiseTorrent.Parsing.Builders
 			if (!_rawDict.TryGetValue(key, out var obj) || obj is not BList outer) return null;
 
 			return outer
-				.Select(url => TryGetServerURL(url.ToString() ?? ""))
+				.Select(url => new ServerURL(url.ToString() ?? ""))
 				.Where(server => server.Protocol != PeerDiscoveryProtocol.INVALID)
 				.ToList();
 		}
@@ -100,11 +100,8 @@ namespace WiseTorrent.Parsing.Builders
 				}
 				return new TorrentInfo(name, pieceLength, pieceHashes, files);
 			}
-			else
-			{
-				var length = GetByteSize(infoDict, "length");
-				return new TorrentInfo(name, pieceLength, pieceHashes, length);
-			}
+
+			return new TorrentInfo(name, pieceLength, pieceHashes, GetByteSize(infoDict, "length"));
 		}
 
 		private byte[][] ParsePieceHashes(byte[] hashStream)

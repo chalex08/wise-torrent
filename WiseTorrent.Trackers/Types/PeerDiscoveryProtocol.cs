@@ -9,6 +9,7 @@ namespace WiseTorrent.Trackers.Types
     public enum PeerDiscoveryProtocol
     {
         HTTP,
+        HTTPS,
         UDP,
         DHT,
         WS,

@@ -33,6 +33,11 @@ namespace WiseTorrent.Parsing.Types
 			Unit = newUnit;
 		}
 
+		public bool Equals(ByteSize compare)
+		{
+			return Unit == compare.Unit && Size.Equals(compare.Size);
+		}
+
 		public override string ToString()
 		{
 			return $"{Size:D3} {Unit.ToString()}";

@@ -13,7 +13,6 @@ namespace WiseTorrent.Parsing.Interfaces
 	{
 		public static IServiceCollection AddParsingDependencies(this IServiceCollection services)
 		{
-			services.AddSingleton<IBEncodeReader, BEncodeReader>();
 			services.AddSingleton<ITorrentParser, Classes.TorrentParser>();
 			return services;
 		}
