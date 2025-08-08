@@ -10,6 +10,6 @@ namespace WiseTorrent.Utilities.Interfaces
     {
         void Info(string message);
         void Warn(string message);
-        void Error(string message, Exception? exception);
+        void Error(string message, Exception? exception = null);
     }
 }

@@ -10,6 +10,7 @@ namespace WiseTorrent.Utilities.Types
     {
 	    public DateTime Timestamp { get; set; } = DateTime.Now;
         public LogLevel Level { get; set; }
+        public string ClassName { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
     }
 }

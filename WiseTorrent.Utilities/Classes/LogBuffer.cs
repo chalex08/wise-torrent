@@ -12,9 +12,9 @@ namespace WiseTorrent.Utilities.Classes
 		private static readonly List<LogEntry> _entries = new();
 		public static event Action<LogEntry>? LogUpdated;
 
-		public static void Write(LogLevel level, string message)
+		public static void Write(LogLevel level, string className, string message)
 		{
-			var entry = new LogEntry { Level = level, Message = message };
+			var entry = new LogEntry { Level = level, ClassName = className, Message = message };
 			_entries.Add(entry);
 			LogUpdated?.Invoke(entry);
 		}

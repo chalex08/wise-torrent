@@ -5,10 +5,10 @@ namespace WiseTorrent.Utilities.Classes
 {
 	internal class BufferLogger<T> : ILogger<T>
 	{
-		private readonly string _categoryName;
+		private readonly string _className;
 		public BufferLogger()
 		{
-			_categoryName = typeof(T).FullName ?? typeof(T).Name;
+			_className = typeof(T).Name;
 		}
 
 		public void Info(string message) { Log(LogLevel.Info, message); }
@@ -22,7 +22,7 @@ namespace WiseTorrent.Utilities.Classes
 			if (exception != null)
 				message += $" Exception: {exception.Message}";
 
-			LogBuffer.Write(logLevel, $"[{_categoryName}] {message}");
+			LogBuffer.Write(logLevel, _className, message);
 		}
 	}
 }
