@@ -7,14 +7,13 @@ using WiseTorrent.Trackers.Interfaces;
 using WiseTorrent.Utilities.Classes;
 using WiseTorrent.Utilities.Interfaces;
 
-namespace WiseTorrent.Utilities.Injector
+namespace WiseTorrent.UI.Services
 {
 	public static class ServiceConfig
 	{
 		public static void ConfigureServices(IServiceCollection services)
 		{
-			services.AddSingleton(typeof(ILogger<>), typeof(BufferLogger<>));
-			services.AddSingleton<ILogService, LogService>();
+			services.AddUtilityDependencies();
 			services.AddParsingDependencies();
 			services.AddPeersDependencies();
 			services.AddPiecesDependencies();
