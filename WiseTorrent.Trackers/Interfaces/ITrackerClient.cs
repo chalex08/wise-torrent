@@ -8,5 +8,6 @@ namespace WiseTorrent.Trackers.Interfaces
 {
     public interface ITrackerClient
     {
+	    void InitialiseClient(string baseUri);
     }
 }
