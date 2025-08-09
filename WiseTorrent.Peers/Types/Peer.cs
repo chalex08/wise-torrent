@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace WiseTorrent.Peers.Types
+﻿namespace WiseTorrent.Peers.Types
 {
-    internal class Peer
+    public class Peer
     {
+	    public required string IP;
+        public required int Port;
+        public required string PeerID;
     }
 }
