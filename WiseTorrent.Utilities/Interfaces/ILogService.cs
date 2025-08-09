@@ -4,8 +4,8 @@ namespace WiseTorrent.Utilities.Interfaces
 {
 	public interface ILogService
 	{
-		event Action<LogEntry>? OnLogReceived;
 		IReadOnlyList<LogEntry> GetLogs();
-		void Subscribe();
+		void Subscribe(Action<LogEntry> listenerAction);
+		void Unsubscribe(Action<LogEntry> listenerAction);
 	}
 }
