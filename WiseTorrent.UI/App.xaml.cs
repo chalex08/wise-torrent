@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using WiseTorrent.Utilities.Injector;
 using System.Windows;
 using WiseTorrent.UI.Services;
 

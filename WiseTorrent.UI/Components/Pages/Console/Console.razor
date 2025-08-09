@@ -1,0 +1,159 @@
+@page "/console"
+@using WiseTorrent.Utilities.Interfaces
+@using WiseTorrent.Utilities.Types
+@inject ILogService LogService
+@inject IJSRuntime JS
+
+<PageTitle>Console</PageTitle>
+
+<div class="console-page">
+	<h1 id="consoleHeader">Console</h1>
+
+	<main class="console-body">
+		<div id="logViewer" class="log-viewer" @ref="logContainer">
+			@foreach (var entry in logs)
+			{
+				<div id="message" style="margin: 0; padding: 0; line-height: 1.2; color:@GetColor(entry.Level);">
+					<b>[@entry.Timestamp] [@entry.Level] [@entry.ClassName]</b> @entry.Message
+				</div>
+			}
+		</div>
+	</main>
+</div>
+
+<style>
+	.console-page {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	}
+
+	.console-body {
+	flex: 1;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	}
+
+	.log-viewer {
+	flex: 1;
+	overflow-y: auto;
+	font-family: monospace;
+	white-space: pre-wrap;
+	padding: 1rem;
+	}
+</style>
+
+<script>
+	window.scrollToEnd = function (element) {
+	if (element) {
+	element.scrollTop = element.scrollHeight;
+	console.log("Scrolled to bottom");
+	} else {
+	console.warn("Element is null");
+	}
+	};
+
+	window.logViewerState = {
+	isAtBottom: true
+	};
+
+	window.trackScrollPosition = function (element, epsilon = 2) {
+	if (!element) return;
+
+	const updateScrollState = () => {
+	const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+	window.logViewerState.isAtBottom = Math.abs(distance) <= epsilon;
+	console.log("Scroll state:", window.logViewerState.isAtBottom);
+	};
+
+	element.addEventListener("scroll", updateScrollState);
+	updateScrollState();
+	};
+
+	window.getScrollState = function () {
+	return window.logViewerState.isAtBottom;
+	};
+
+	window.adjustLogViewerHeight = function (fontSize = "0.8rem") {
+	const viewer = document.getElementById("logViewer");
+	const header = document.getElementById("consoleHeader");
+
+	if (viewer && header) {
+	const windowHeight = window.innerHeight;
+	const headerHeight = header.offsetHeight;
+	const maxHeight = (windowHeight - headerHeight) * 0.85;
+	viewer.style.maxHeight = maxHeight + "px";
+	viewer.style.fontSize = fontSize;
+	}
+	};
+
+	window.addEventListener("resize", () => {
+	window.adjustLogViewerHeight();
+	});
+
+	window.untrackScrollPosition = function (element) {
+	if (!element || !element._scrollHandler) return;
+	element.removeEventListener("scroll", element._scrollHandler);
+	delete element._scrollHandler;
+	};
+</script>
+
+@code {
+	private List<LogEntry> logs = new();
+	private ElementReference logContainer;
+	private bool shouldScroll = false;
+	private bool _subscribed = false;
+
+	private void HandleLog(LogEntry entry)
+	{
+		logs.Add(entry);
+		shouldScroll = true;
+		InvokeAsync(StateHasChanged);
+	}
+
+	protected override void OnInitialized()
+	{
+		if (!_subscribed)
+		{
+			LogService.Subscribe(HandleLog);
+			_subscribed = true;
+		}
+
+		logs = LogService.GetLogs().ToList();
+		JS.InvokeVoidAsync("scrollToEnd", logContainer);
+	}
+	
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await JS.InvokeVoidAsync("adjustLogViewerHeight");
+			await JS.InvokeVoidAsync("trackScrollPosition", logContainer, 2);
+		}
+
+		if (shouldScroll)
+		{
+			shouldScroll = false;
+			var isAtBottom = await JS.InvokeAsync<bool>("getScrollState");
+			if (isAtBottom)
+			{
+				await JS.InvokeVoidAsync("scrollToEnd", logContainer);
+			}
+		}
+	}
+
+	private string GetColor(LogLevel level) => level switch
+	{
+		LogLevel.Info => "black",
+		LogLevel.Warn => "orange",
+		LogLevel.Error => "red",
+		_ => "gray"
+	};
+
+	public async void Dispose()
+	{
+		await JS.InvokeVoidAsync("untrackScrollPosition", logContainer);
+		LogService.Unsubscribe(HandleLog);
+	}
+}

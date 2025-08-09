@@ -16,11 +16,15 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="8.0.3" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Parsing\WiseTorrent.Parsing.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Peers\WiseTorrent.Peers.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Pieces\WiseTorrent.Pieces.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Storage\WiseTorrent.Storage.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
