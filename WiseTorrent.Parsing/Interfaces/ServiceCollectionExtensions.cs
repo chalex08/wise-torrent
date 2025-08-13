@@ -14,6 +14,7 @@ namespace WiseTorrent.Parsing.Interfaces
 		public static IServiceCollection AddParsingDependencies(this IServiceCollection services)
 		{
 			services.AddSingleton<ITorrentParser, Classes.TorrentParser>();
+			services.AddSingleton<ITrackerResponseParser, TrackerResponseParser>();
 			return services;
 		}
 	}
