@@ -1,23 +1,40 @@
-﻿@inherits LayoutComponentBase
+﻿@using WiseTorrent.UI.Services
+@inherits LayoutComponentBase
+@inject FullscreenStateService FullscreenService
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+	<div class="sidebar">
+		<NavMenu />
+	</div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+	<main>
+		<div class="top-row px-4">
+			<button class="btn btn-sm btn-outline-primary" @onclick="ToggleFullscreen" title="Toggle fullscreen">
+				<span class="@FullscreenIconClass"></span>
+			</button>
+		</div>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+		<article class="content px-4">
+			@Body
+		</article>
+	</main>
 </div>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+@code {
+	private string FullscreenIconClass =>
+		FullscreenService.IsFullscreen ? "bi bi-fullscreen-exit" : "bi bi-arrows-fullscreen";
+
+	protected override void OnInitialized()
+	{
+		FullscreenService.OnChange += StateHasChanged;
+	}
+
+	void ToggleFullscreen() => MainWindow.Instance?.ToggleFullscreen();
+
+	public void Dispose()
+	{
+		FullscreenService.OnChange -= StateHasChanged;
+	}
+}
+
+@namespace WiseTorrent.UI.Components.Layout

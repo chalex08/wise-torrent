@@ -49,3 +49,10 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+.bi.nav-menu {
+    font-size: 1.25rem;
+    line-height: 1.5rem;
+    vertical-align: text-top;
+    margin-right: 0.5rem;
+}

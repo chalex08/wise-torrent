@@ -4,12 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WiseTorrent.Parsing.Types
+namespace WiseTorrent.Utilities.Types
 {
-	public enum ByteUnit
+	public enum LogLevel
 	{
-		Byte = 1,
-		Kibibyte = 1024,
-		Mebibyte = 1048576
+		Info,
+		Warn,
+		Error
 	}
 }

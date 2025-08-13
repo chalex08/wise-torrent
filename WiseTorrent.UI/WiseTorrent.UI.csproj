@@ -1,9 +1,41 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<RootNamespace>WiseTorrent.UI</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="Assets\WTGICON.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="8.0.3" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Parsing\WiseTorrent.Parsing.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Peers\WiseTorrent.Peers.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Pieces\WiseTorrent.Pieces.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Storage\WiseTorrent.Storage.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Razor component support -->
+		<Content Update="wwwroot\**\*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Include="Assets\WTGICON.ico" />
+	</ItemGroup>
 
 </Project>

@@ -1,35 +1,42 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	<PropertyGroup>
+		<TargetFrameworks>net8.0;net8.0-windows10.0.19041.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
 
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-  </PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="6.0.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+		<PackageReference Include="NUnit" Version="3.14.0" />
+		<PackageReference Include="NUnit.Analyzers" Version="3.9.0" />
+		<PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\WiseTorrent.Core\WiseTorrent.Core.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Parsing\WiseTorrent.Parsing.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Peers\WiseTorrent.Peers.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Pieces\WiseTorrent.Pieces.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Storage\WiseTorrent.Storage.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">
+		<ProjectReference Include="..\WiseTorrent.UI\WiseTorrent.UI.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="NUnit.Framework" />
+	</ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="NUnit" Version="3.14.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="3.9.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\WiseTorrent.Core\WiseTorrent.Core.csproj" />
-    <ProjectReference Include="..\WiseTorrent.Parsing\WiseTorrent.Parsing.csproj" />
-    <ProjectReference Include="..\WiseTorrent.Peers\WiseTorrent.Peers.csproj" />
-    <ProjectReference Include="..\WiseTorrent.Pieces\WiseTorrent.Pieces.csproj" />
-    <ProjectReference Include="..\WiseTorrent.Storage\WiseTorrent.Storage.csproj" />
-    <ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
-    <ProjectReference Include="..\WiseTorrent.UI\WiseTorrent.UI.csproj" />
-    <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="NUnit.Framework" />
+    <Folder Include="TestAssets\" />
   </ItemGroup>
 
 </Project>
