@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-	<ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
-	<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+	  <ProjectReference Include="..\WiseTorrent.Peers\WiseTorrent.Peers.csproj" />
+	  <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
 		<_Parameter1>WiseTorrent.Tests</_Parameter1>
 	</AssemblyAttribute>
   </ItemGroup>

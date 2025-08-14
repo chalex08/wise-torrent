@@ -1,15 +1,14 @@
-﻿using WiseTorrent.Trackers.Types;
-using WiseTorrent.Trackers.Interfaces;
+﻿using WiseTorrent.Trackers.Interfaces;
 
 namespace WiseTorrent.Core
 {
     public class TorrentSession
     {
-		private readonly Func<PeerDiscoveryProtocol, ITrackerClient> _trackerSelector;
+		private readonly ITrackerServiceTaskClient _trackerServiceTaskClient;
 
-		public TorrentSession(Func<PeerDiscoveryProtocol, ITrackerClient> trackerSelector)
+		public TorrentSession(ITrackerServiceTaskClient trackerServiceTaskClient)
 		{
-			_trackerSelector = trackerSelector;
+			_trackerServiceTaskClient = trackerServiceTaskClient;
 		}
 	}
 }

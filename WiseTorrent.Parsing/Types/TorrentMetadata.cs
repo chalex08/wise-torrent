@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using WiseTorrent.Trackers;
-using WiseTorrent.Trackers.Types;
-
-namespace WiseTorrent.Parsing.Types
+﻿namespace WiseTorrent.Parsing.Types
 {
 	public class TorrentMetadata
 	{
@@ -19,5 +14,6 @@ namespace WiseTorrent.Parsing.Types
 		public string? Source { get; set; }
 
 		public required TorrentInfo Info { get; set; }
+		public required byte[] InfoHash { get; set; }
 	}
 }

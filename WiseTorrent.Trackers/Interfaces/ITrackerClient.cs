@@ -9,8 +9,6 @@ namespace WiseTorrent.Trackers.Interfaces
 {
     public interface ITrackerClient
     {
-	    void InitialiseClient(List<string> trackerAddresses, Action<List<Peer>> onTrackerResponse);
-	    Task StartServiceTask();
-	    void StopServiceTask();
+	    Task<(int, bool)> RunServiceTask(int interval, string trackerAddress, Action<List<Peer>> onTrackerResponse, CancellationToken cancellationToken);
     }
 }
