@@ -8,17 +8,8 @@ namespace WiseTorrent.Trackers.Classes
 {
 	internal class HTTPTrackerClient : ITrackerClient
 	{
-		private readonly ITrackerResponseParser _responseParser;
 		private readonly ILogger<HTTPTrackerClient> _logger;
-		private const int DefaultIntervalSeconds = 1800;
-		private const int FallbackIntervalSeconds = 30;
-
-		private List<string> _trackerAddresses = new();
-		private int _currentTrackerIndex = 0;
-		private int _interval = 0;
-		private CancellationTokenSource _cts = new();
-
-		public event Action<List<Peer>>? OnTrackerResponse;
+		private readonly ITrackerResponseParser _responseParser;
 
 		public HTTPTrackerClient(ITrackerResponseParser responseParser, ILogger<HTTPTrackerClient> logger)
 		{
@@ -26,70 +17,46 @@ namespace WiseTorrent.Trackers.Classes
 			_logger = logger;
 		}
 
-		public void InitialiseClient(List<string> trackerAddresses, Action<List<Peer>> onTrackerResponse)
+		public async Task<(int, bool)> RunServiceTask(int interval, string trackerAddress, Action<List<Peer>> onTrackerResponse, CancellationToken cToken)
 		{
-			_trackerAddresses = trackerAddresses;
-			OnTrackerResponse = onTrackerResponse;
-		}
-
-		public async Task StartServiceTask()
-		{
-			while (!_cts.Token.IsCancellationRequested)
-			{
-				await RunServiceTask().ConfigureAwait(false);
-				var delay = _interval > 0 ? _interval : DefaultIntervalSeconds;
-				await Task.Delay(TimeSpan.FromSeconds(delay), _cts.Token).ConfigureAwait(false);
-			}
-		}
-
-		private async Task RunServiceTask()
-		{
-			var trackerUrl = _trackerAddresses[_currentTrackerIndex];
+			var responseInterval = 0;
+			var shouldRotateTracker = false;
 			try
 			{
-				_logger.Info($"Announcing to tracker: {trackerUrl}");
+				_logger.Info($"Announcing to tracker: {trackerAddress}");
 				using var client = new HttpClient();
-				using var request = new HttpRequestMessage(HttpMethod.Get, trackerUrl);
-				var response = await client.SendAsync(request, _cts.Token).ConfigureAwait(false);
+				using var request = new HttpRequestMessage(HttpMethod.Get, trackerAddress);
+				var response = await client.SendAsync(request, cToken).ConfigureAwait(false);
 				response.EnsureSuccessStatusCode();
-				var responseStr = await response.Content.ReadAsStringAsync(_cts.Token).ConfigureAwait(false);
+				var responseStr = await response.Content.ReadAsStringAsync(cToken).ConfigureAwait(false);
 				TrackerResponse? parsedResponse = _responseParser.ParseTrackerResponseFromString(responseStr);
 
 				if (parsedResponse != null)
 				{
-					if (_interval != parsedResponse.Interval)
+					if (interval != parsedResponse.Interval)
 					{
-						_logger.Info($"Tracker interval updated: {_interval} → {parsedResponse.Interval}");
-						_interval = parsedResponse.Interval;
+						_logger.Info($"Tracker interval updated: {interval} → {parsedResponse.Interval}");
+						responseInterval = parsedResponse.Interval;
 					}
 
-					OnTrackerResponse?.Invoke(parsedResponse.Peers);
+					onTrackerResponse(parsedResponse.Peers);
 				}
 				else
 				{
 					_logger.Warn("Tracker response was null");
-					_interval = FallbackIntervalSeconds;
-					RotateTracker();
+					responseInterval = TrackerServiceTaskClient.FallbackIntervalSeconds;
+					shouldRotateTracker = true;
 				}
 
 			}
 			catch (Exception ex)
 			{
 				_logger.Error("HTTP GET request to tracker failed", ex);
-				_interval = FallbackIntervalSeconds;
-				RotateTracker();
+				responseInterval = TrackerServiceTaskClient.FallbackIntervalSeconds;
+				shouldRotateTracker = true;
 			}
-		}
 
-		private void RotateTracker()
-		{
-			_currentTrackerIndex = (_currentTrackerIndex + 1) % _trackerAddresses.Count;
-			_logger.Warn($"Switching to next tracker: {_trackerAddresses[_currentTrackerIndex]}");
-		}
-
-		public void StopServiceTask()
-		{
-			_cts.Cancel();
+			return (responseInterval, shouldRotateTracker);
 		}
 	}
 }

@@ -1,6 +1,5 @@
 using WiseTorrent.Parsing.Classes;
 using WiseTorrent.Parsing.Types;
-using WiseTorrent.Trackers.Types;
 
 namespace WiseTorrent.Tests.ParsingTests
 {
