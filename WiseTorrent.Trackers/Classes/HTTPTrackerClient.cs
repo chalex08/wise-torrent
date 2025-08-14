@@ -1,7 +1,9 @@
-﻿using WiseTorrent.Parsing.Interfaces;
+﻿using System.Web;
+using WiseTorrent.Parsing.Interfaces;
 using WiseTorrent.Parsing.Types;
 using WiseTorrent.Peers.Types;
 using WiseTorrent.Trackers.Interfaces;
+using WiseTorrent.Trackers.Types;
 using WiseTorrent.Utilities.Interfaces;
 
 namespace WiseTorrent.Trackers.Classes
@@ -11,10 +13,46 @@ namespace WiseTorrent.Trackers.Classes
 		private readonly ILogger<HTTPTrackerClient> _logger;
 		private readonly ITrackerResponseParser _responseParser;
 
+		private byte[] _infoHash;
+
+		// maybe use torrent session config user peer instead
+		private Peer _userPeer;
+
+		public int UploadCount { private get; set; }
+		public int DownloadCount { private get; set; }
+		public long RemainingByteCount { private get; set; }
+
+		// implement enum for event state
+		private EventState? _eventState;
+
+
 		public HTTPTrackerClient(ITrackerResponseParser responseParser, ILogger<HTTPTrackerClient> logger)
 		{
 			_responseParser = responseParser;
 			_logger = logger;
+		}
+
+		public void InitialiseClientState(byte[] infoHash, Peer userPeer, EventState eventState, int uploadCount,
+			int downloadCount, long remainingBytes)
+		{
+			_infoHash = infoHash;
+			_userPeer = userPeer;
+			_eventState = eventState;
+			UploadCount = uploadCount;
+			DownloadCount = downloadCount;
+			RemainingByteCount = remainingBytes;
+		}
+
+		private string BuildTrackerURL(string trackerAddress)
+		{
+			return trackerAddress
+				+ "?info_hash=" + HttpUtility.UrlEncode(_infoHash)
+				+ "&peer_id=" + HttpUtility.UrlEncode(_userPeer.PeerIDBytes)
+				+ "&port=" + _userPeer.Port
+				+ "&uploaded=" + UploadCount
+				+ "&downloaded=" + DownloadCount
+				+ "&left=" + RemainingByteCount
+				+ (_eventState != null ? "&event=" + _eventState.ToURLString() : String.Empty);
 		}
 
 		public async Task<(int, bool)> RunServiceTask(int interval, string trackerAddress, Action<List<Peer>> onTrackerResponse, CancellationToken cToken)
@@ -25,7 +63,7 @@ namespace WiseTorrent.Trackers.Classes
 			{
 				_logger.Info($"Announcing to tracker: {trackerAddress}");
 				using var client = new HttpClient();
-				using var request = new HttpRequestMessage(HttpMethod.Get, trackerAddress);
+				using var request = new HttpRequestMessage(HttpMethod.Get, BuildTrackerURL(trackerAddress));
 				var response = await client.SendAsync(request, cToken).ConfigureAwait(false);
 				response.EnsureSuccessStatusCode();
 				var responseStr = await response.Content.ReadAsStringAsync(cToken).ConfigureAwait(false);
