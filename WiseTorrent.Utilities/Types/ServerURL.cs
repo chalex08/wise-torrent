@@ -1,11 +1,13 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Text.RegularExpressions;
 
-namespace WiseTorrent.Parsing.Types
+namespace WiseTorrent.Utilities.Types
 {
 	public class ServerURL(string url)
 	{
 		public PeerDiscoveryProtocol Protocol { get; set; } = URLToProtocol(url);
-		public string Url { get; set; } = url;
+		public Uri Url { get; set; } = new (url);
 
 		private static PeerDiscoveryProtocol URLToProtocol(string url)
 		{
@@ -15,6 +17,13 @@ namespace WiseTorrent.Parsing.Types
 			if (Regex.IsMatch(url, "^udp", RegexOptions.IgnoreCase)) return PeerDiscoveryProtocol.UDP;
 			if (Regex.IsMatch(url, "^ws", RegexOptions.IgnoreCase)) return PeerDiscoveryProtocol.WS;
 			return PeerDiscoveryProtocol.INVALID;
+		}
+
+		public async Task<IPEndPoint> GetIPEndPoint()
+		{
+			var addresses = await Dns.GetHostAddressesAsync(Url.Host);
+			var ip = addresses.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+			return new IPEndPoint(ip, Url.Port);
 		}
 	}
 }

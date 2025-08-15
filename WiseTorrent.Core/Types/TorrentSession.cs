@@ -1,12 +1,11 @@
-﻿using WiseTorrent.Parsing.Types;
-using WiseTorrent.Peers.Types;
-using WiseTorrent.Trackers.Interfaces;
-using WiseTorrent.Trackers.Types;
+﻿using System.Text;
+using WiseTorrent.Utilities.Types;
 
-namespace WiseTorrent.Core
+namespace WiseTorrent.Core.Types
 {
     public class TorrentSession
     {
+		public required Encoding Encoding { get; init; }
 	    public required TorrentInfo Info { get; init; }
 		public required byte[] InfoHash { get; init; }
 		public required string TorrentName { get; init; }
@@ -15,13 +14,20 @@ namespace WiseTorrent.Core
 		public long UploadedBytes { get; set; }
 		public long DownloadedBytes { get; set; }
 		public long RemainingBytes { get; set; }
+		public long ConnectionId { get; set; }
+		public int LeecherCount { get; set; }
+		public int SeederCount { get; set; }
 
 		public EventState CurrentEvent { get; set; }
 
-		public required List<ServerURL> TrackerUrls { get; init; }
+		public List<ServerURL> TrackerUrls { get; init; } = new();
+		public int CurrentTrackerUrlIndex { get; set; }
+		public ServerURL CurrentTrackerUrl => TrackerUrls[CurrentTrackerUrlIndex];
 		public List<Peer> ConnectedPeers { get; set; } = new();
 
 		public DateTime LastAnnounceTime { get; set; }
 		public int TrackerIntervalSeconds { get; set; }
+
+		public SessionEvent<List<Peer>> OnTrackerResponse = new();
 	}
 }

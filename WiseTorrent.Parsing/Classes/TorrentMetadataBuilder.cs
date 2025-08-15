@@ -1,6 +1,6 @@
-﻿using System.Security.Cryptography;
-using BencodeNET.Objects;
-using WiseTorrent.Parsing.Types;
+﻿using BencodeNET.Objects;
+using System.Security.Cryptography;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Parsing.Builders
 {

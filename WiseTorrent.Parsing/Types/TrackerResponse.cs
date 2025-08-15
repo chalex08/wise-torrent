@@ -1,4 +1,4 @@
-﻿using WiseTorrent.Peers.Types;
+﻿using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Parsing.Types
 {

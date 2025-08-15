@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace WiseTorrent.Parsing.Types
+﻿namespace WiseTorrent.Utilities.Types
 {
 	public class ByteSize
 	{

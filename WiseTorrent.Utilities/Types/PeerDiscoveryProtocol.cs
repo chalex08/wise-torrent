@@ -1,4 +1,4 @@
-﻿namespace WiseTorrent.Parsing.Types
+﻿namespace WiseTorrent.Utilities.Types
 {
     public enum PeerDiscoveryProtocol
     {

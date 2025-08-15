@@ -1,4 +1,4 @@
-﻿namespace WiseTorrent.Trackers.Types
+﻿namespace WiseTorrent.Utilities.Types
 {
 	public enum EventState
 	{
@@ -10,7 +10,7 @@
 
 	public static class EventStateExtensions
 	{
-		public static string ToURLString(this EventState? state)
+		public static string ToURLString(this EventState state)
 		{
 			return state switch
 			{

@@ -1,10 +1,10 @@
 ﻿using System.Web;
+using WiseTorrent.Core.Types;
 using WiseTorrent.Parsing.Interfaces;
 using WiseTorrent.Parsing.Types;
-using WiseTorrent.Peers.Types;
 using WiseTorrent.Trackers.Interfaces;
-using WiseTorrent.Trackers.Types;
 using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Classes
 {
@@ -13,57 +13,33 @@ namespace WiseTorrent.Trackers.Classes
 		private readonly ILogger<HTTPTrackerClient> _logger;
 		private readonly ITrackerResponseParser _responseParser;
 
-		private byte[] _infoHash;
-
-		// maybe use torrent session config user peer instead
-		private Peer _userPeer;
-
-		public int UploadCount { private get; set; }
-		public int DownloadCount { private get; set; }
-		public long RemainingByteCount { private get; set; }
-
-		// implement enum for event state
-		private EventState? _eventState;
-
-
 		public HTTPTrackerClient(ITrackerResponseParser responseParser, ILogger<HTTPTrackerClient> logger)
 		{
 			_responseParser = responseParser;
 			_logger = logger;
 		}
 
-		public void InitialiseClientState(byte[] infoHash, Peer userPeer, EventState eventState, int uploadCount,
-			int downloadCount, long remainingBytes)
+		private string BuildTrackerURL(TorrentSession torrentSession)
 		{
-			_infoHash = infoHash;
-			_userPeer = userPeer;
-			_eventState = eventState;
-			UploadCount = uploadCount;
-			DownloadCount = downloadCount;
-			RemainingByteCount = remainingBytes;
+			return torrentSession.CurrentTrackerUrl.Url
+				+ "?info_hash=" + HttpUtility.UrlEncode(torrentSession.InfoHash)
+				+ "&peer_id=" + HttpUtility.UrlEncode(torrentSession.LocalPeer.PeerIDBytes)
+				+ "&port=" + torrentSession.LocalPeer.IPEndPoint.Port
+				+ "&uploaded=" + torrentSession.UploadedBytes
+				+ "&downloaded=" + torrentSession.DownloadedBytes
+				+ "&left=" + torrentSession.RemainingBytes
+				+ (torrentSession.CurrentEvent != EventState.None ? "&event=" + torrentSession.CurrentEvent.ToURLString() : String.Empty);
 		}
 
-		private string BuildTrackerURL(string trackerAddress)
+		public async Task<bool> RunServiceTask(TorrentSession torrentSession, CancellationToken cToken)
 		{
-			return trackerAddress
-				+ "?info_hash=" + HttpUtility.UrlEncode(_infoHash)
-				+ "&peer_id=" + HttpUtility.UrlEncode(_userPeer.PeerIDBytes)
-				+ "&port=" + _userPeer.Port
-				+ "&uploaded=" + UploadCount
-				+ "&downloaded=" + DownloadCount
-				+ "&left=" + RemainingByteCount
-				+ (_eventState != null ? "&event=" + _eventState.ToURLString() : String.Empty);
-		}
-
-		public async Task<(int, bool)> RunServiceTask(int interval, string trackerAddress, Action<List<Peer>> onTrackerResponse, CancellationToken cToken)
-		{
-			var responseInterval = 0;
 			var shouldRotateTracker = false;
 			try
 			{
-				_logger.Info($"Announcing to tracker: {trackerAddress}");
+
+				_logger.Info($"Announcing to tracker: {torrentSession.CurrentTrackerUrl.Url}");
 				using var client = new HttpClient();
-				using var request = new HttpRequestMessage(HttpMethod.Get, BuildTrackerURL(trackerAddress));
+				using var request = new HttpRequestMessage(HttpMethod.Get, BuildTrackerURL(torrentSession));
 				var response = await client.SendAsync(request, cToken).ConfigureAwait(false);
 				response.EnsureSuccessStatusCode();
 				var responseStr = await response.Content.ReadAsStringAsync(cToken).ConfigureAwait(false);
@@ -71,18 +47,18 @@ namespace WiseTorrent.Trackers.Classes
 
 				if (parsedResponse != null)
 				{
-					if (interval != parsedResponse.Interval)
+					if (torrentSession.TrackerIntervalSeconds != parsedResponse.Interval)
 					{
-						_logger.Info($"Tracker interval updated: {interval} → {parsedResponse.Interval}");
-						responseInterval = parsedResponse.Interval;
+						_logger.Info($"Tracker interval updated: {torrentSession.TrackerIntervalSeconds} → {parsedResponse.Interval}");
+						torrentSession.TrackerIntervalSeconds = parsedResponse.Interval;
 					}
 
-					onTrackerResponse(parsedResponse.Peers);
+					torrentSession.OnTrackerResponse.NotifyListeners(parsedResponse.Peers);
 				}
 				else
 				{
 					_logger.Warn("Tracker response was null");
-					responseInterval = TrackerServiceTaskClient.FallbackIntervalSeconds;
+					torrentSession.TrackerIntervalSeconds = TrackerServiceTaskClient.FallbackIntervalSeconds;
 					shouldRotateTracker = true;
 				}
 
@@ -90,11 +66,11 @@ namespace WiseTorrent.Trackers.Classes
 			catch (Exception ex)
 			{
 				_logger.Error("HTTP GET request to tracker failed", ex);
-				responseInterval = TrackerServiceTaskClient.FallbackIntervalSeconds;
+				torrentSession.TrackerIntervalSeconds = TrackerServiceTaskClient.FallbackIntervalSeconds;
 				shouldRotateTracker = true;
 			}
 
-			return (responseInterval, shouldRotateTracker);
+			return shouldRotateTracker;
 		}
 	}
 }
