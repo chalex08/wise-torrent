@@ -1,7 +1,7 @@
-﻿using WiseTorrent.Parsing.Types;
-using WiseTorrent.Peers.Types;
+﻿using WiseTorrent.Core.Types;
 using WiseTorrent.Trackers.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Classes
 {
@@ -10,58 +10,37 @@ namespace WiseTorrent.Trackers.Classes
 		private readonly ILogger<TrackerServiceTaskClient> _logger;
 		private readonly Func<PeerDiscoveryProtocol, ITrackerClient> _clients;
 		private ITrackerClient _client;
-
-		private List<ServerURL> _trackerAddresses = new();
-		private int _currentTrackerIndex = 0;
-		private ServerURL _currentTrackerUrl = new(String.Empty);
-		private int _interval = 0;
 		private readonly CancellationTokenSource _cts = new();
+		private readonly TorrentSession _torrentSession;
 
 		private const int DefaultIntervalSeconds = 1800;
 		public static readonly int FallbackIntervalSeconds = 30;
 
-		private event Action<List<Peer>> OnTrackerResponse;
-
-		public TrackerServiceTaskClient(ILogger<TrackerServiceTaskClient> logger, Func<PeerDiscoveryProtocol, ITrackerClient> clients)
+		public TrackerServiceTaskClient(ILogger<TrackerServiceTaskClient> logger, Func<PeerDiscoveryProtocol, ITrackerClient> clients, TorrentSession torrentSession)
 		{
 			_logger = logger;
 			_clients = clients;
-		}
-
-		public void InitialiseClient(List<ServerURL> trackerAddresses, Action<List<Peer>> onTrackerResponse)
-		{
-			_trackerAddresses = trackerAddresses;
-			OnTrackerResponse = onTrackerResponse;
-			_currentTrackerIndex = 0;
-			_currentTrackerUrl = _trackerAddresses[_currentTrackerIndex];
-			SetClient(_currentTrackerUrl.Protocol);
+			_torrentSession = torrentSession;
+			_client = _clients(torrentSession.CurrentTrackerUrl.Protocol);
 		}
 
 		public async Task StartServiceTask()
 		{
 			while (!_cts.Token.IsCancellationRequested)
 			{
-				var trackerUrl = _trackerAddresses[_currentTrackerIndex];
-
-				(_interval, var shouldRotateTracker) = await _client.RunServiceTask(_interval, trackerUrl.Url, OnTrackerResponse, _cts.Token).ConfigureAwait(false);
+				var shouldRotateTracker = await _client.RunServiceTask(_torrentSession, _cts.Token).ConfigureAwait(false);
 				if (shouldRotateTracker) { RotateTracker(); }
 
-				var delay = _interval > 0 ? _interval : DefaultIntervalSeconds;
+				var delay = _torrentSession.TrackerIntervalSeconds > 0 ? _torrentSession.TrackerIntervalSeconds : DefaultIntervalSeconds;
 				await Task.Delay(TimeSpan.FromSeconds(delay), _cts.Token).ConfigureAwait(false);
 			}
 		}
 
-		private void SetClient(PeerDiscoveryProtocol protocol)
-		{
-			_client = _clients(protocol);
-		}
-
 		private void RotateTracker()
 		{
-			_currentTrackerIndex = (_currentTrackerIndex + 1) % _trackerAddresses.Count;
-			_currentTrackerUrl = _trackerAddresses[_currentTrackerIndex];
-			SetClient(_currentTrackerUrl.Protocol);
-			_logger.Warn($"Switching to next tracker: {_currentTrackerUrl}");
+			_torrentSession.CurrentTrackerUrlIndex = (_torrentSession.CurrentTrackerUrlIndex + 1) % _torrentSession.TrackerUrls.Count;
+			_client = _clients(_torrentSession.CurrentTrackerUrl.Protocol);
+			_logger.Warn($"Switching to next tracker: {_torrentSession.CurrentTrackerUrl.Url}");
 		}
 
 		public void StopServiceTask()

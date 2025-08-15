@@ -1,9 +1,9 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using WiseTorrent.Peers.Types;
+using WiseTorrent.Core.Types;
 using WiseTorrent.Trackers.Interfaces;
-using WiseTorrent.Trackers.Types;
 using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Classes
 {
@@ -12,95 +12,61 @@ namespace WiseTorrent.Trackers.Classes
 		private const long ProtocolId = 0x41727101980; // magic constant
 		private const int ConnectAction = 0;
 		private const int AnnounceAction = 1;
+		private const int UdpSendTimeoutMs = 5000;
+		private const int UdpReceiveTimeoutMs = 5000;
 
 		private readonly ILogger<UDPTrackerClient> _logger;
 		private readonly Random _random = new();
-
-		private byte[] _infoHash;
-		private Peer _userPeer;
-		private EventState? _eventState;
-		private int _uploadCount;
-		private int _downloadCount;
-		private long _remainingByteCount;
 
 		public UDPTrackerClient(ILogger<UDPTrackerClient> logger)
 		{
 			_logger = logger;
 		}
 
-		public void InitialiseClientState(byte[] infoHash, Peer userPeer, EventState eventState, int uploadCount, int downloadCount, long remainingBytes)
+		public async Task<bool> RunServiceTask(TorrentSession torrentSession, CancellationToken cToken)
 		{
-			_infoHash = infoHash;
-			_userPeer = userPeer;
-			_eventState = eventState;
-			_uploadCount = uploadCount;
-			_downloadCount = downloadCount;
-			_remainingByteCount = remainingBytes;
-		}
-
-		public async Task<(int, bool)> RunServiceTask(int interval, string trackerAddress, Action<List<Peer>> onTrackerResponse, CancellationToken cToken)
-		{
-			var responseInterval = 0;
 			var shouldRotateTracker = false;
-
 			try
 			{
-				var uri = new Uri(trackerAddress);
-
-				var host = uri.Host;
-				var port = uri.Port;
-
-				var addresses = await Dns.GetHostAddressesAsync(host, cToken);
-				var ip = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork);
-				if (ip == null)
-					return (TrackerServiceTaskClient.FallbackIntervalSeconds, true);
-
-				var endpoint = new IPEndPoint(ip, port);
 				using var udpClient = new UdpClient();
-
-				udpClient.Client.SendTimeout = 5000;
-				udpClient.Client.ReceiveTimeout = 5000;
-
-				var transactionId = _random.Next();
-				var connectRequest = BuildConnectRequest(transactionId);
-
-				await udpClient.SendAsync(connectRequest, connectRequest.Length, endpoint);
+				udpClient.Client.SendTimeout = UdpSendTimeoutMs;
+				udpClient.Client.ReceiveTimeout = UdpReceiveTimeoutMs;
 
 				using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cToken);
 				timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
 
-				var connectReceiveTask = udpClient.ReceiveAsync();
-				var connectCompleted = await Task.WhenAny(connectReceiveTask, Task.Delay(Timeout.Infinite, timeoutCts.Token));
+				var endpoint = await torrentSession.CurrentTrackerUrl.GetIPEndPoint();
 
-				if (connectCompleted != connectReceiveTask)
-					throw new TimeoutException("Connect response timed out");
+				await PerformTrackerHandshake(udpClient, endpoint, torrentSession, timeoutCts.Token);
 
-				var connectionId = ParseConnectResponse(connectReceiveTask.Result.Buffer, transactionId);
+				var peers = await PerformTrackerAnnounce(udpClient, endpoint, torrentSession, timeoutCts.Token);
 
-				var announceTransactionId = _random.Next();
-				var announceRequest = BuildAnnounceRequest(connectionId, announceTransactionId);
-
-				await udpClient.SendAsync(announceRequest, announceRequest.Length, endpoint);
-
-				var announceReceiveTask = udpClient.ReceiveAsync();
-				var announceCompleted = await Task.WhenAny(announceReceiveTask, Task.Delay(Timeout.Infinite, timeoutCts.Token));
-
-				if (announceCompleted != announceReceiveTask)
-					throw new TimeoutException("Announce response timed out");
-
-				var (intervalSec, peers) = ParseAnnounceResponse(announceReceiveTask.Result.Buffer, announceTransactionId);
-
-				responseInterval = intervalSec;
-				onTrackerResponse(peers);
+				torrentSession.OnTrackerResponse.NotifyListeners(peers);
 			}
 			catch (Exception ex)
 			{
 				_logger.Error("UDP tracker communication failed", ex);
-				responseInterval = TrackerServiceTaskClient.FallbackIntervalSeconds;
+				torrentSession.TrackerIntervalSeconds = TrackerServiceTaskClient.FallbackIntervalSeconds;
 				shouldRotateTracker = true;
 			}
 
-			return (responseInterval, shouldRotateTracker);
+			return shouldRotateTracker;
+		}
+
+		private async Task PerformTrackerHandshake(UdpClient udpClient, IPEndPoint endpoint, TorrentSession torrentSession, CancellationToken timeoutCt)
+		{
+			var transactionId = _random.Next();
+			var connectRequest = BuildConnectRequest(transactionId);
+
+			await udpClient.SendAsync(connectRequest, connectRequest.Length, endpoint);
+
+			var connectReceiveTask = udpClient.ReceiveAsync();
+			var connectCompleted = await Task.WhenAny(connectReceiveTask, Task.Delay(Timeout.Infinite, timeoutCt));
+
+			if (connectCompleted != connectReceiveTask)
+				throw new TimeoutException("Connect response timed out");
+			
+			torrentSession.ConnectionId = ParseConnectResponseForConnectionID(connectReceiveTask.Result.Buffer, transactionId);
 		}
 
 		private byte[] BuildConnectRequest(int transactionId)
@@ -112,17 +78,33 @@ namespace WiseTorrent.Trackers.Classes
 			return buffer;
 		}
 
-		private long ParseConnectResponse(byte[] buffer, int expectedTransactionId)
+		private long ParseConnectResponseForConnectionID(byte[] buffer, int expectedTransactionId)
 		{
-			var action = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
-			var transactionId = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 4));
+			var action = NetworkToHostInt32(buffer, 0);
+			var transactionId = NetworkToHostInt32(buffer, 4);
 			if (action != ConnectAction || transactionId != expectedTransactionId)
 				throw new InvalidOperationException("Invalid connect response");
 
 			return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(buffer, 8));
 		}
 
-		private byte[] BuildAnnounceRequest(long connectionId, int transactionId)
+		private async Task<List<Peer>> PerformTrackerAnnounce(UdpClient udpClient, IPEndPoint endpoint, TorrentSession torrentSession, CancellationToken timeoutCt)
+		{
+			var announceTransactionId = _random.Next();
+			var announceRequest = BuildAnnounceRequest(announceTransactionId, torrentSession);
+
+			await udpClient.SendAsync(announceRequest, announceRequest.Length, endpoint);
+
+			var announceReceiveTask = udpClient.ReceiveAsync();
+			var announceCompleted = await Task.WhenAny(announceReceiveTask, Task.Delay(Timeout.Infinite, timeoutCt));
+
+			if (announceCompleted != announceReceiveTask)
+				throw new TimeoutException("Announce response timed out");
+
+			return ParseAnnounceResponse(announceReceiveTask.Result.Buffer, announceTransactionId, torrentSession);
+		}
+
+		private byte[] BuildAnnounceRequest(int transactionId, TorrentSession torrentSession)
 		{
 			var buffer = new byte[98];
 			var offset = 0;
@@ -131,40 +113,48 @@ namespace WiseTorrent.Trackers.Classes
 			void WriteLong(long value) => BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)).CopyTo(buffer, offset += 8 - 8);
 			void WriteBytes(byte[] data, int length) => data.CopyTo(buffer, offset += length - length);
 
-			WriteLong(connectionId);
+			WriteLong(torrentSession.ConnectionId);
 			WriteInt(AnnounceAction);
 			WriteInt(transactionId);
-			WriteBytes(_infoHash, 20);
-			WriteBytes(_userPeer.PeerIDBytes, 20);
-			WriteLong(_downloadCount);
-			WriteLong(_remainingByteCount);
-			WriteLong(_uploadCount);
-			WriteInt((int)(_eventState ?? EventState.None));
+			WriteBytes(torrentSession.InfoHash, 20);
+			WriteBytes(torrentSession.LocalPeer.PeerIDBytes, 20);
+			WriteLong(torrentSession.DownloadedBytes);
+			WriteLong(torrentSession.RemainingBytes);
+			WriteLong(torrentSession.UploadedBytes);
+			WriteInt((int)torrentSession.CurrentEvent);
 			WriteInt(0); // IP address (0 for tracker to infer)
 			WriteInt(_random.Next()); // key (random value for stats tracking)
 			WriteInt(-1); // num_want (-1 for default)
-			WriteInt(_userPeer.Port);
+			WriteInt(torrentSession.LocalPeer.IPEndPoint.Port);
 
 			return buffer;
 		}
 
-		private (int interval, List<Peer> peers) ParseAnnounceResponse(byte[] buffer, int expectedTransactionId)
+		private List<Peer> ParseAnnounceResponse(byte[] buffer, int expectedTransactionId, TorrentSession torrentSession)
 		{
-			var action = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
-			var transactionId = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 4));
+			var action = NetworkToHostInt32(buffer, 0);
+			var transactionId = NetworkToHostInt32(buffer, 4);
 			if (action != AnnounceAction || transactionId != expectedTransactionId)
 				throw new InvalidOperationException("Invalid announce response");
 
-			var interval = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 8));
+			torrentSession.TrackerIntervalSeconds = NetworkToHostInt32(buffer, 8);
+			torrentSession.LeecherCount = NetworkToHostInt32(buffer, 12);
+			torrentSession.SeederCount = NetworkToHostInt32(buffer, 16);
+
 			var peerList = new List<Peer>();
 			for (int i = 20; i < buffer.Length; i += 6)
 			{
 				var ip = new IPAddress(buffer[i..(i + 4)]);
-				var port = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, i + 4));
-				peerList.Add(new Peer{ IP = ip.ToString(), Port = port });
+				var port = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, i + 4));
+				peerList.Add(new Peer{ IPEndPoint = new IPEndPoint(ip, port)});
 			}
 
-			return (interval, peerList);
+			return peerList;
+		}
+
+		private int NetworkToHostInt32(byte[] buffer, int startByte)
+		{
+			return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, startByte));
 		}
 	}
 }

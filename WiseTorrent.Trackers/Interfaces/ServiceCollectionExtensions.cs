@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using WiseTorrent.Parsing.Types;
+using WiseTorrent.Core.Types;
 using WiseTorrent.Trackers.Classes;
+using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Interfaces
 {
@@ -10,7 +12,6 @@ namespace WiseTorrent.Trackers.Interfaces
 		{
 			services.AddSingleton<HTTPTrackerClient>();
 			services.AddSingleton<UDPTrackerClient>();
-			services.AddSingleton<ITrackerServiceTaskClient, TrackerServiceTaskClient>();
 			services.AddSingleton<Func<PeerDiscoveryProtocol, ITrackerClient>>(provider => key =>
 			{
 				return key switch
@@ -21,6 +22,13 @@ namespace WiseTorrent.Trackers.Interfaces
 					_ => throw new ArgumentException($"Unknown parser type: {key}")
 				};
 			});
+			services.AddTransient<Func<TorrentSession, TrackerServiceTaskClient>>(sp => session =>
+			{
+				var logger = sp.GetRequiredService<ILogger<TrackerServiceTaskClient>>();
+				var clientFactory = sp.GetRequiredService<Func<PeerDiscoveryProtocol, ITrackerClient>>();
+				return new TrackerServiceTaskClient(logger, clientFactory, session);
+			});
+
 			return services;
 		}
 	}

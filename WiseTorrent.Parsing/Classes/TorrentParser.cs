@@ -1,7 +1,7 @@
 ﻿using BencodeNET.Objects;
 using WiseTorrent.Parsing.Builders;
 using WiseTorrent.Parsing.Interfaces;
-using WiseTorrent.Parsing.Types;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Parsing.Classes
 {

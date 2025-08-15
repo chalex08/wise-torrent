@@ -1,5 +1,5 @@
 ﻿using System.Collections.Concurrent;
-using WiseTorrent.Trackers.Interfaces;
+using WiseTorrent.Core.Types;
 using WiseTorrent.Utilities.Interfaces;
 
 namespace WiseTorrent.Core
