@@ -1,7 +1,5 @@
 ﻿using System.Web;
-using WiseTorrent.Core.Types;
 using WiseTorrent.Parsing.Interfaces;
-using WiseTorrent.Parsing.Types;
 using WiseTorrent.Trackers.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
@@ -36,24 +34,37 @@ namespace WiseTorrent.Trackers.Classes
 			var shouldRotateTracker = false;
 			try
 			{
-
-				_logger.Info($"Announcing to tracker: {torrentSession.CurrentTrackerUrl.Url}");
 				using var client = new HttpClient();
 				using var request = new HttpRequestMessage(HttpMethod.Get, BuildTrackerURL(torrentSession));
+
+				_logger.Info("Sending announce request");
 				var response = await client.SendAsync(request, cToken).ConfigureAwait(false);
 				response.EnsureSuccessStatusCode();
-				var responseStr = await response.Content.ReadAsStringAsync(cToken).ConfigureAwait(false);
-				TrackerResponse? parsedResponse = _responseParser.ParseTrackerResponseFromString(responseStr);
+				_logger.Info("Announce response successful");
+
+				TrackerResponse? parsedResponse = await _responseParser.ParseHttpTrackerResponseAsync(response).ConfigureAwait(false);
 
 				if (parsedResponse != null)
 				{
-					if (torrentSession.TrackerIntervalSeconds != parsedResponse.Interval)
+					if (parsedResponse.FailureReason == null)
 					{
-						_logger.Info($"Tracker interval updated: {torrentSession.TrackerIntervalSeconds} → {parsedResponse.Interval}");
-						torrentSession.TrackerIntervalSeconds = parsedResponse.Interval;
-					}
+						if (torrentSession.TrackerIntervalSeconds != parsedResponse.Interval)
+						{
+							_logger.Info($"Tracker interval updated: {torrentSession.TrackerIntervalSeconds} → {parsedResponse.Interval}");
+							torrentSession.TrackerIntervalSeconds = (int)parsedResponse.Interval!;
+						}
 
-					torrentSession.OnTrackerResponse.NotifyListeners(parsedResponse.Peers);
+						_logger.Info("Peer list received, notifying listeners");
+						torrentSession.OnTrackerResponse.NotifyListeners(parsedResponse.Peers!);
+						torrentSession.LeecherCount = (int)parsedResponse.Incomplete!;
+						torrentSession.SeederCount = (int)parsedResponse.Complete!;
+					}
+					else
+					{
+						_logger.Warn("Tracker announce request failed: " + parsedResponse.FailureReason);
+						torrentSession.TrackerIntervalSeconds = TrackerServiceTaskClient.FallbackIntervalSeconds;
+						shouldRotateTracker = true;
+					}
 				}
 				else
 				{
@@ -61,7 +72,6 @@ namespace WiseTorrent.Trackers.Classes
 					torrentSession.TrackerIntervalSeconds = TrackerServiceTaskClient.FallbackIntervalSeconds;
 					shouldRotateTracker = true;
 				}
-
 			}
 			catch (Exception ex)
 			{

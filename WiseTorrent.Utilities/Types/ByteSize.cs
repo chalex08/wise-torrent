@@ -3,28 +3,37 @@
 	public class ByteSize
 	{
 		public ByteUnit Unit;
-		public double Size;
+		public long Size;
 
-		public ByteSize(ByteUnit unit, double size)
+		public ByteSize(ByteUnit unit, long size)
 		{
 			if (size < 0) throw new ArgumentOutOfRangeException(nameof(size));
 			this.Unit = unit;
 			this.Size = size;
 		}
 
-		public ByteSize(double sizeInBytes)
+		public ByteSize(long sizeInBytes)
 		{
 			if (sizeInBytes < 0) throw new ArgumentOutOfRangeException(nameof(sizeInBytes));
-			else if (sizeInBytes < (long)ByteUnit.Kibibyte) Unit = ByteUnit.Byte;
+			if (sizeInBytes < (long)ByteUnit.Kibibyte) Unit = ByteUnit.Byte;
 			else if (sizeInBytes < (long)ByteUnit.Mebibyte) Unit = ByteUnit.Kibibyte;
 			else Unit = ByteUnit.Mebibyte;
 			Size = sizeInBytes / (long)Unit;
 		}
 
-		public void ConvertUnit(ByteUnit newUnit)
+		public ByteSize ConvertUnit(ByteUnit newUnit)
 		{
-			Size *= (long)Unit / (long)newUnit;
-			Unit = newUnit;
+			return new ByteSize(newUnit, Size * (long)Unit / (long)newUnit);
+		}
+
+		public static ByteSize NormaliseByteSize(long sizeInBytes)
+		{
+			ByteUnit unit;
+			if (sizeInBytes < 0) throw new ArgumentOutOfRangeException(nameof(sizeInBytes));
+			if (sizeInBytes < (long)ByteUnit.Kibibyte) unit = ByteUnit.Byte;
+			else if (sizeInBytes < (long)ByteUnit.Mebibyte) unit = ByteUnit.Kibibyte;
+			else unit = ByteUnit.Mebibyte;
+			return new ByteSize(unit, sizeInBytes / (long)unit);
 		}
 
 		public bool Equals(ByteSize compare)
@@ -35,6 +44,11 @@
 		public override string ToString()
 		{
 			return $"{Size:D3} {Unit.ToString()}";
+		}
+
+		public static ByteSize operator +(ByteSize s1, ByteSize s2)
+		{
+			return NormaliseByteSize(s1.ConvertUnit(ByteUnit.Byte).Size + s2.ConvertUnit(ByteUnit.Byte).Size);
 		}
 	}
 }

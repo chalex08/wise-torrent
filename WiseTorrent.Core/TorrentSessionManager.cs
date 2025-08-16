@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
-using WiseTorrent.Core.Types;
 using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Core
 {

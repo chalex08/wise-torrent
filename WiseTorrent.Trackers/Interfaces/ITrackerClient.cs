@@ -1,4 +1,4 @@
-﻿using WiseTorrent.Core.Types;
+﻿using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Interfaces
 {

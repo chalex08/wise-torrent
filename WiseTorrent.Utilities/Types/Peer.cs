@@ -7,6 +7,6 @@ namespace WiseTorrent.Utilities.Types
 	{
 		public string? PeerID { get; set; }
 		public required IPEndPoint IPEndPoint { get; set; }
-		public byte[] PeerIDBytes => PeerID != null ? Encoding.UTF8.GetBytes(PeerID) : [];
+		public byte[] PeerIDBytes => PeerID != null ? Encoding.ASCII.GetBytes(PeerID) : [];
 	}
 }

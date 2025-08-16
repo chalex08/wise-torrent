@@ -20,10 +20,11 @@
 		<Compile Include="..\WiseTorrent.Core\Types\*.cs">
 			<Link>WiseTorrent.Core\Types\%(Filename)%(Extension)</Link>
 		</Compile>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>WiseTorrent.Tests</_Parameter1>
+		</AssemblyAttribute>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>DynamicProxyGenAssembly2</_Parameter1>
+		</AssemblyAttribute>
 	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Types\" />
-	</ItemGroup>
-
 </Project>

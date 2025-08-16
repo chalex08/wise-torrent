@@ -1,5 +1,4 @@
-﻿using WiseTorrent.Core.Types;
-using WiseTorrent.Trackers.Interfaces;
+﻿using WiseTorrent.Trackers.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
 
@@ -10,7 +9,7 @@ namespace WiseTorrent.Trackers.Classes
 		private readonly ILogger<TrackerServiceTaskClient> _logger;
 		private readonly Func<PeerDiscoveryProtocol, ITrackerClient> _clients;
 		private ITrackerClient _client;
-		private readonly CancellationTokenSource _cts = new();
+		private CancellationToken CToken { get; set; }
 		private readonly TorrentSession _torrentSession;
 
 		private const int DefaultIntervalSeconds = 1800;
@@ -24,16 +23,28 @@ namespace WiseTorrent.Trackers.Classes
 			_client = _clients(torrentSession.CurrentTrackerUrl.Protocol);
 		}
 
-		public async Task StartServiceTask()
+		public async Task StartServiceTask(CancellationToken cToken)
 		{
-			while (!_cts.Token.IsCancellationRequested)
+			CToken = cToken;
+			_logger.Info("Tracker service task started");
+			while (!CToken.IsCancellationRequested)
 			{
-				var shouldRotateTracker = await _client.RunServiceTask(_torrentSession, _cts.Token).ConfigureAwait(false);
+				_logger.Info($"Running tracker service task on {_torrentSession.CurrentTrackerUrl.Url}, using {_torrentSession.CurrentTrackerUrl.Protocol}");
+				var shouldRotateTracker = await _client.RunServiceTask(_torrentSession, CToken).ConfigureAwait(false);
 				if (shouldRotateTracker) { RotateTracker(); }
 
-				var delay = _torrentSession.TrackerIntervalSeconds > 0 ? _torrentSession.TrackerIntervalSeconds : DefaultIntervalSeconds;
-				await Task.Delay(TimeSpan.FromSeconds(delay), _cts.Token).ConfigureAwait(false);
+				var delaySeconds = _torrentSession.TrackerIntervalSeconds > 0 ? _torrentSession.TrackerIntervalSeconds : DefaultIntervalSeconds;
+				var delayMinutes = delaySeconds / 60;
+				var delaySecondsRemainder = delaySeconds % 60;
+				var timeString = delayMinutes > 0
+					? $"{delayMinutes} minute{(delayMinutes == 1 ? "" : "s")}" + (delaySecondsRemainder > 0 ? $" {delaySecondsRemainder} second{(delaySecondsRemainder == 1 ? "" : "s")}" : "")
+					: $"{delaySecondsRemainder} second{(delaySecondsRemainder == 1 ? "" : "s")}";
+
+				_logger.Info($"Tracker service task will next run in {timeString}");
+				await Task.Delay(TimeSpan.FromSeconds(delaySeconds), CToken).ConfigureAwait(false);
 			}
+
+			_logger.Info("Tracker service task stopped");
 		}
 
 		private void RotateTracker()
@@ -41,11 +52,6 @@ namespace WiseTorrent.Trackers.Classes
 			_torrentSession.CurrentTrackerUrlIndex = (_torrentSession.CurrentTrackerUrlIndex + 1) % _torrentSession.TrackerUrls.Count;
 			_client = _clients(_torrentSession.CurrentTrackerUrl.Protocol);
 			_logger.Warn($"Switching to next tracker: {_torrentSession.CurrentTrackerUrl.Url}");
-		}
-
-		public void StopServiceTask()
-		{
-			_cts.Cancel();
 		}
 	}
 }

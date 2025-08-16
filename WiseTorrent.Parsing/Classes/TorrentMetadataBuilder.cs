@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using WiseTorrent.Utilities.Types;
 
-namespace WiseTorrent.Parsing.Builders
+namespace WiseTorrent.Parsing.Classes
 {
 	internal class TorrentMetadataBuilder
 	{
