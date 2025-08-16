@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using WiseTorrent.Core.Types;
 using WiseTorrent.Trackers.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
@@ -12,8 +11,7 @@ namespace WiseTorrent.Trackers.Classes
 		private const long ProtocolId = 0x41727101980; // magic constant
 		private const int ConnectAction = 0;
 		private const int AnnounceAction = 1;
-		private const int UdpSendTimeoutMs = 5000;
-		private const int UdpReceiveTimeoutMs = 5000;
+		private const int UdpClientActionTimeoutSeconds = 5;
 
 		private readonly ILogger<UDPTrackerClient> _logger;
 		private readonly Random _random = new();
@@ -28,19 +26,22 @@ namespace WiseTorrent.Trackers.Classes
 			var shouldRotateTracker = false;
 			try
 			{
-				using var udpClient = new UdpClient();
-				udpClient.Client.SendTimeout = UdpSendTimeoutMs;
-				udpClient.Client.ReceiveTimeout = UdpReceiveTimeoutMs;
+				using var udpClient = new UdpClient(torrentSession.LocalPeer.IPEndPoint);
+				udpClient.Client.SendTimeout = UdpClientActionTimeoutSeconds * 1000;
+				udpClient.Client.ReceiveTimeout = UdpClientActionTimeoutSeconds * 1000;
 
 				using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cToken);
-				timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+				timeoutCts.CancelAfter(TimeSpan.FromSeconds(UdpClientActionTimeoutSeconds));
 
 				var endpoint = await torrentSession.CurrentTrackerUrl.GetIPEndPoint();
 
+				_logger.Info("Performing tracker handshake");
 				await PerformTrackerHandshake(udpClient, endpoint, torrentSession, timeoutCts.Token);
 
+				_logger.Info("Performing tracker announce");
 				var peers = await PerformTrackerAnnounce(udpClient, endpoint, torrentSession, timeoutCts.Token);
 
+				_logger.Info("Peer list received, notifying listeners");
 				torrentSession.OnTrackerResponse.NotifyListeners(peers);
 			}
 			catch (Exception ex)
@@ -58,15 +59,19 @@ namespace WiseTorrent.Trackers.Classes
 			var transactionId = _random.Next();
 			var connectRequest = BuildConnectRequest(transactionId);
 
+			_logger.Info("Sending connect request");
 			await udpClient.SendAsync(connectRequest, connectRequest.Length, endpoint);
 
+			_logger.Info($"Connect request sent. Waiting {UdpClientActionTimeoutSeconds} seconds for response");
 			var connectReceiveTask = udpClient.ReceiveAsync();
 			var connectCompleted = await Task.WhenAny(connectReceiveTask, Task.Delay(Timeout.Infinite, timeoutCt));
 
 			if (connectCompleted != connectReceiveTask)
 				throw new TimeoutException("Connect response timed out");
-			
+
+			_logger.Info("Connection response received successfully");
 			torrentSession.ConnectionId = ParseConnectResponseForConnectionID(connectReceiveTask.Result.Buffer, transactionId);
+			_logger.Info($"Connection ID received successfully: {torrentSession.ConnectionId}");
 		}
 
 		private byte[] BuildConnectRequest(int transactionId)
@@ -92,15 +97,19 @@ namespace WiseTorrent.Trackers.Classes
 		{
 			var announceTransactionId = _random.Next();
 			var announceRequest = BuildAnnounceRequest(announceTransactionId, torrentSession);
+			_logger.Info($"Announce packet length: {announceRequest.Length}");
 
+			_logger.Info("Sending announce request");
 			await udpClient.SendAsync(announceRequest, announceRequest.Length, endpoint);
 
+			_logger.Info($"Announce request sent. Waiting {UdpClientActionTimeoutSeconds} seconds for response");
 			var announceReceiveTask = udpClient.ReceiveAsync();
 			var announceCompleted = await Task.WhenAny(announceReceiveTask, Task.Delay(Timeout.Infinite, timeoutCt));
 
 			if (announceCompleted != announceReceiveTask)
 				throw new TimeoutException("Announce response timed out");
 
+			_logger.Info("Announce response received successfully");
 			return ParseAnnounceResponse(announceReceiveTask.Result.Buffer, announceTransactionId, torrentSession);
 		}
 

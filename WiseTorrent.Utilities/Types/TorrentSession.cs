@@ -1,18 +1,16 @@
 ﻿using System.Text;
-using WiseTorrent.Utilities.Types;
 
-namespace WiseTorrent.Core.Types
+namespace WiseTorrent.Utilities.Types
 {
     public class TorrentSession
     {
-		public required Encoding Encoding { get; init; }
 	    public required TorrentInfo Info { get; init; }
 		public required byte[] InfoHash { get; init; }
-		public required string TorrentName { get; init; }
 		public required Peer LocalPeer { get; init; }
 
 		public long UploadedBytes { get; set; }
 		public long DownloadedBytes { get; set; }
+		public long TotalBytes { get; set; }
 		public long RemainingBytes { get; set; }
 		public long ConnectionId { get; set; }
 		public int LeecherCount { get; set; }

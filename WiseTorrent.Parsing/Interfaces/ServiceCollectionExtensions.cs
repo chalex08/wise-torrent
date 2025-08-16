@@ -1,10 +1,4 @@
-﻿using BencodeNET.Torrents;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.DependencyInjection;
 using WiseTorrent.Parsing.Classes;
 
 namespace WiseTorrent.Parsing.Interfaces
@@ -13,7 +7,8 @@ namespace WiseTorrent.Parsing.Interfaces
 	{
 		public static IServiceCollection AddParsingDependencies(this IServiceCollection services)
 		{
-			services.AddSingleton<ITorrentParser, Classes.TorrentParser>();
+			services.AddSingleton<IBEncodeReader, BEncodeReader>();
+			services.AddSingleton<ITorrentParser, TorrentParser>();
 			services.AddSingleton<ITrackerResponseParser, TrackerResponseParser>();
 			return services;
 		}

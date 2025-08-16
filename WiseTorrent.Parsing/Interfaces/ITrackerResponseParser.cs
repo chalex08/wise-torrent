@@ -1,9 +1,10 @@
-﻿using WiseTorrent.Parsing.Types;
+﻿using System.Text;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Parsing.Interfaces
 {
 	public interface ITrackerResponseParser
 	{
-		TrackerResponse? ParseTrackerResponseFromString(string rawResponse);
+		Task<TrackerResponse?> ParseHttpTrackerResponseAsync(HttpResponseMessage response);
 	}
 }
