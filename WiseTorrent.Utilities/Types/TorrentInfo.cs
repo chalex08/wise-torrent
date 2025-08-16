@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace WiseTorrent.Parsing.Types
+﻿namespace WiseTorrent.Utilities.Types
 {
 	public class TorrentInfo
 	{

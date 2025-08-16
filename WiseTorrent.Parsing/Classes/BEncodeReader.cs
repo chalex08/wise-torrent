@@ -2,22 +2,30 @@
 using BencodeNET.Objects;
 using BencodeNET.Parsing;
 using WiseTorrent.Parsing.Interfaces;
+using WiseTorrent.Utilities.Interfaces;
 
 namespace WiseTorrent.Parsing.Classes
 {
-	internal static class BEncodeReader
+	internal class BEncodeReader : IBEncodeReader
 	{
-		public static BDictionary? ParseTorrentFileFromPath(string path)
+		private readonly ILogger<BEncodeReader> _logger;
+
+		public BEncodeReader(ILogger<BEncodeReader> logger)
+		{
+			_logger = logger;
+		}
+
+		public BDictionary? ParseTorrentFileFromPath(string path)
 		{
 			if (!File.Exists(path))
 			{
-				Console.WriteLine($"File not found: {path}");
+				_logger.Error($"File not found: {path}");
 				return null;
 			}
 
 			if (Path.GetExtension(path).ToLowerInvariant() != ".torrent")
 			{
-				Console.WriteLine($"Invalid file extension: {path}. Expected '.torrent'");
+				_logger.Error($"Invalid file extension: {path}. Expected '.torrent'");
 				return null;
 			}
 
@@ -28,12 +36,12 @@ namespace WiseTorrent.Parsing.Classes
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine($"Failed to open file: {e}");
+				_logger.Error("Failed to open file", e);
 				return null;
 			}
 		}
 
-		private static BDictionary? ParseTorrentFileFromStream(Stream stream)
+		private BDictionary? ParseTorrentFileFromStream(Stream stream)
 		{
 			try
 			{
@@ -42,7 +50,7 @@ namespace WiseTorrent.Parsing.Classes
 				BDictionary parsedObject = parser.Parse<BDictionary>(reader);
 				if (!parsedObject.ContainsKey("info"))
 				{
-					Console.WriteLine("Invalid torrent file: missing 'info' dictionary.");
+					_logger.Error("Invalid torrent file: missing 'info' dictionary.");
 					return null;
 				}
 
@@ -50,9 +58,25 @@ namespace WiseTorrent.Parsing.Classes
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine($"Parsing error: {e}");
+				_logger.Error("Parsing error", e);
 				return null;
 			}
 		}
+
+		public async Task<BDictionary?> ParseHttpTrackerResponseAsync(HttpResponseMessage response)
+		{
+			try
+			{
+				var bytes = await response.Content.ReadAsByteArrayAsync();
+				var parser = new BencodeParser();
+				return parser.Parse<BDictionary>(bytes);
+			}
+			catch
+			{
+				return null;
+			}
+
+		}
+
 	}
 }

@@ -1,8 +1,8 @@
 ﻿using BencodeNET.Objects;
-using WiseTorrent.Parsing.Types;
-using WiseTorrent.Trackers.Types;
+using System.Security.Cryptography;
+using WiseTorrent.Utilities.Types;
 
-namespace WiseTorrent.Parsing.Builders
+namespace WiseTorrent.Parsing.Classes
 {
 	internal class TorrentMetadataBuilder
 	{
@@ -18,6 +18,7 @@ namespace WiseTorrent.Parsing.Builders
 			if (!_rawDict.TryGetValue("info", out var infoObj) || infoObj is not BDictionary infoDict)
 				return null;
 
+			var hashBytes = SHA1.HashData(infoDict.EncodeAsBytes());
 			var metadata = new TorrentMetadata
 			{
 				Announce = TryGetServerURL("announce"),
@@ -30,7 +31,8 @@ namespace WiseTorrent.Parsing.Builders
 				HttpSeeds = ParseURLList("httpseeds"),
 				Source = TryGetString(_rawDict, "source"),
 				IsPrivate = infoDict.TryGetValue("private", out var priv) && priv.ToString() == "1",
-				Info = ParseTorrentInfo(infoDict)
+				Info = ParseTorrentInfo(infoDict),
+				InfoHash = hashBytes
 			};
 
 			return metadata;
