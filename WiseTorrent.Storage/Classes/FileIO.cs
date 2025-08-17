@@ -2,7 +2,7 @@
 
 namespace WiseTorrent.Storage.Classes
 {
-    internal class FileIO : IFileIO
+    public class FileIO : IFileIO
     {
         // Open the file for reading
         public async Task<int> ReadAsync(string filePath, byte[] buffer, long offset, int count, CancellationToken cancellationToken = default)

@@ -9,7 +9,7 @@ namespace WiseTorrent.Storage.Interfaces
 	public interface IFileIO : IDisposable
     {
 
-        // Reads a sequence of bytes from a file asynchronously.
+        // Reads a sequence of bytes from a file asynchronously
         // filePath -> File path to read from.
         // buffer -> Buffer to fill.
         // offset -> Position in file to start reading.
