@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Interfaces
 {
-    public interface ITrackerClient
-    {
-    }
+	public interface ITrackerClient
+	{
+		Task<bool> RunServiceTask(TorrentSession torrentSession, CancellationToken cancellationToken);
+	}
 }
