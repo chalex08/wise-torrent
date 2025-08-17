@@ -11,14 +11,19 @@ namespace WiseTorrent.Peers.Types
 {
     public class Peer : IDisposable
     {
-        // Identification
-        public string? PeerID { get; set; }
-        public IPEndPoint? IPEndPoint { get; set; }
+        // Events
+        public event Action<Peer, byte[]>? MessageReceived; 
+        public event Action<Peer>? PeerDisconnected;
 
         // Connection
         private TcpClient? _tcpClient;
         private NetworkStream? _stream;
         private readonly MemoryStream _receiveBuffer = new MemoryStream();
+
+        // Identification
+        public string PeerID { get; set; } // generate and stored in hashmap
+        public required IPEndPoint IPEndPoint { get; set; }
+        public byte[] PeerIDBytes => Encoding.UTF8.GetBytes(PeerID);
 
         public bool IsConnected { get; set; } = false;
         public DateTime LastActive { get; set; }
@@ -36,15 +41,58 @@ namespace WiseTorrent.Peers.Types
         public DateTime? LastOptimisticUnchokeTime { get; private set; }
 
         // Constructor
-        public Peer(TcpClient tcpClient, string? peerID = null)
+        public Peer() { }
+
+        public Peer(TcpClient tcpClient)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
-            PeerID = peerID;
-            LastActive = DateTime.UtcNow;
+
+            StartListening();
         }
 
-        // Send data to peer
+        // attempts to connect to 
+        public void ConnectAsync()
+        {
+            throw new NotImplementedException();
+        }
+        private void StartListening()
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    byte[] buffer = new byte[4096];
+                    while (_tcpClient != null && _tcpClient.Connected)
+                    {
+                        int bytesRead = _stream!.Read(buffer, 0, buffer.Length);
+                        if (bytesRead > 0)
+                        {
+                            _receiveBuffer.Write(buffer, 0, bytesRead);
+                            BytesDownloaded += bytesRead;
+                            LastActive = DateTime.UtcNow;
+
+                            byte[] messageData = new byte[bytesRead];
+                            Array.Copy(buffer, messageData, bytesRead);
+                            MessageReceived?.Invoke(this, messageData);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Connection error
+                }
+
+                Disconnect();
+                PeerDisconnected?.Invoke(this);
+            });
+        }
+
+        // Try send data to peer
         public bool TrySend(byte[] data)
         {
             if (_stream == null || !_stream.CanWrite) return false;
@@ -86,40 +134,24 @@ namespace WiseTorrent.Peers.Types
         }
 
         // Get buffered data (for message parsing)
-        public byte[] GetBufferedData()
-        {
-            return _receiveBuffer.ToArray();
-        }
+        public byte[] GetBufferedData() => _receiveBuffer.ToArray();
 
         // Clear buffer after processing
-        public void ClearBuffer()
-        {
-            _receiveBuffer.SetLength(0);
-        }
+        public void ClearBuffer() => _receiveBuffer.SetLength(0);
 
         // Performance scoring
-        public double GetPerformanceScore()
-        {
-            return BytesUploaded * 0.7 + BytesDownloaded * 0.3;
-        }
+        public double GetPerformanceScore() => BytesUploaded * 0.7 + BytesDownloaded * 0.3;
 
-        public void MarkOptimisticallyUnchoked()
-        {
-            LastOptimisticUnchokeTime = DateTime.UtcNow;
-        }
+        public void MarkOptimisticallyUnchoked() => LastOptimisticUnchokeTime = DateTime.UtcNow;
 
-        public bool WasRecentlyOptimisticallyUnchoked(int seconds)
-        {
-            return LastOptimisticUnchokeTime != null &&
-                   (DateTime.UtcNow - LastOptimisticUnchokeTime.Value).TotalSeconds < seconds;
-        }
+        public bool WasRecentlyOptimisticallyUnchoked(int seconds) =>
+            LastOptimisticUnchokeTime != null &&
+            (DateTime.UtcNow - LastOptimisticUnchokeTime.Value).TotalSeconds < seconds;
 
-        public override string ToString()
-        {
-            return IPEndPoint == null
+        public override string ToString() =>
+            IPEndPoint == null
                 ? "Unknown Peer"
                 : $"{IPEndPoint.Address}:{IPEndPoint.Port} - ID: {PeerID ?? "Unknown"}";
-        }
 
         // Clean up resources
         public void Disconnect()
