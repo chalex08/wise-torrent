@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WiseTorrent.Storage.Interfaces
 {
-	public interface IFileIO : IDisposable
+	public interface IFileIO
     {
 
         // Reads a sequence of bytes from a file asynchronously

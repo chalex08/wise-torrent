@@ -60,10 +60,5 @@ namespace WiseTorrent.Storage.Classes
                     File.Delete(filePath);
             }, cancellationToken).ConfigureAwait(false);
         }
-
-        public void Dispose()
-        {
-            // Nothing to dispose
-        }
     }
 }
