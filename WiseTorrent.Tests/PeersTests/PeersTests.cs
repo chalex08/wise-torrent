@@ -19,10 +19,10 @@ namespace WiseTorrent.Tests.PeersTests
             var port = 6881;
             var peerID = "peer123";
 
-            var peer = new Peer(ip, port, peerID);
+            var peer = new Peer { IPEndPoint = new IPEndPoint(ip, port), PeerID = peerID };
 
-            Assert.AreEqual(ip, peer.IP);
-            Assert.AreEqual(port, peer.Port);
+            Assert.AreEqual(ip, peer.IPEndPoint.Address);
+            Assert.AreEqual(port, peer.IPEndPoint.Port);
             Assert.AreEqual(peerID, peer.PeerID);
             Assert.IsTrue(peer.IsChoked);
             Assert.IsFalse(peer.IsConnected);

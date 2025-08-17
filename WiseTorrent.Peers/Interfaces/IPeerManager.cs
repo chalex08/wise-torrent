@@ -5,8 +5,8 @@ namespace WiseTorrent.Peers.Interfaces
 {
 	public interface IPeerManager
 	{
-        void AddPeer(IPEndPoint peerEndpoint);
-        void ConnectToPeers();
+        Task HandleTrackerResponse(List<Peer> peers);
+        Task ConnectToPeerAsync(Peer peer, CancellationToken token);
         void DisconnectAll();
         List<Peer> GetConnectedPeers();
         void RemovePeer(string peerId);
