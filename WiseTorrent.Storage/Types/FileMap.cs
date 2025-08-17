@@ -60,6 +60,4 @@ namespace WiseTorrent.Storage.Types
             return segments;
         }
     }
-
-    public record FileSegment(string FilePath, long Offset, long Length);
 }
