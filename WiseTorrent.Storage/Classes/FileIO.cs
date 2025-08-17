@@ -7,6 +7,13 @@ namespace WiseTorrent.Storage.Classes
         // Open the file for reading
         public async Task<int> ReadAsync(string filePath, byte[] buffer, long offset, int count, CancellationToken cancellationToken = default)
         {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer), "Buffer cannot be null.");
+            if (count < 0 || count > buffer.Length)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
             using (var stream = new FileStream(
                 filePath,
                 FileMode.Open,
@@ -24,6 +31,13 @@ namespace WiseTorrent.Storage.Classes
         // Open the file for writing
         public async Task WriteAsync(string filePath, byte[] buffer, long offset, int count, CancellationToken cancellationToken = default)
         {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer), "Buffer cannot be null.");
+            if (count < 0 || count > buffer.Length)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
             using (var stream = new FileStream(
                        filePath,
                        FileMode.OpenOrCreate,
