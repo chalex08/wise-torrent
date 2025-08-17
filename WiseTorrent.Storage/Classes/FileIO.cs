@@ -28,7 +28,7 @@ namespace WiseTorrent.Storage.Classes
                        filePath,
                        FileMode.OpenOrCreate,
                        FileAccess.Write,
-                       FileShare.None,
+                       FileShare.Read,
                        bufferSize: 4096,
                        useAsync: true))
             {
@@ -45,21 +45,6 @@ namespace WiseTorrent.Storage.Classes
                 if (File.Exists(filePath))
                     File.Delete(filePath);
             }, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Open the file and flush its contents to disk
-        public async Task FlushAsync(string filePath, CancellationToken cancellationToken = default)
-        {
-            using (var stream = new FileStream(
-                       filePath,
-                       FileMode.Open,
-                       FileAccess.Write,
-                       FileShare.None,
-                       bufferSize: 4096,
-                       useAsync: true))
-            {
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
         }
 
         public void Dispose()

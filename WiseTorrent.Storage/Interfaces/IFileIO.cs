@@ -35,8 +35,5 @@ namespace WiseTorrent.Storage.Interfaces
 
         // Delete a file asynchronously
         Task DeleteAsync(string filePath, CancellationToken cancellationToken = default);
-
-        // Flush buffered data to the disk asynchronously
-        Task FlushAsync(string filePath, CancellationToken cancellationToken = default);
     }
 }
