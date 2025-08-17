@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using WiseTorrent.Storage.Interfaces;
+using WiseTorrent.Storage.Types;
 
 namespace WiseTorrent.Storage.Classes
 {
@@ -13,6 +14,7 @@ namespace WiseTorrent.Storage.Classes
     {
         private readonly IDiskAllocator _diskAllocator;
         private readonly IFileIO _fileIO;
+        private FileMap _fileMap;
         private readonly CancellationToken _cancellationToken;
 
         private ConcurrentQueue<Piece> pieceQueue = new();
@@ -20,16 +22,19 @@ namespace WiseTorrent.Storage.Classes
 
         private readonly Task _workerTask;
 
-        public FileManager(IDiskAllocator diskAllocator, IFileIO fileIO, CancellationToken cancellationToken, int maxPieceQueueSize = 20)
+        public FileManager(IDiskAllocator diskAllocator, IFileIO fileIO, FileMap fileMap, CancellationToken cancellationToken, int maxPieceQueueSize = 20)
         {
             _diskAllocator = diskAllocator;
             _fileIO = fileIO;
+            _fileMap = fileMap;
             _cancellationToken = cancellationToken;
             this.maxPieceQueueSize = maxPieceQueueSize;
+
+            _workerTask = Task.Run(() => WorkerLoop(), _cancellationToken);
         }
 
         // Queue piece for later writing
-        public void ProcessPieceAsync(Piece piece)
+        public void ProcessPiece(Piece piece)
         {
             pieceQueue.Enqueue(piece);
         }
@@ -79,20 +84,24 @@ namespace WiseTorrent.Storage.Classes
             {
                 _cancellationToken.ThrowIfCancellationRequested();
 
-                if (!_diskAllocator.VerifyAllocation(piece.FilePath))
-                {
-                    // TODO: piece.FilePath doesn't exist use FileMap
-                    // TODO: DONT use piece.Data.Length, get whole file size from FileMap
-                    await _diskAllocator.Allocate(piece.FilePath, piece.Data.Length, _cancellationToken);
-                }
+                var segments = _fileMap.Resolve(piece.Index);
 
-                // TODO: replace piece.FilePath and piece.Offset with FileMap 
-                await _fileIO.WriteAsync(
-                    piece.FilePath,
-                    piece.Data,
-                    piece.Offset,
-                    piece.Data.Length,
-                    _cancellationToken);
+                foreach (var segment in segments)
+                {
+                    // Ensure file allocation for at least current incoming segment
+                    if (!_diskAllocator.VerifyAllocation(segment.FilePath))
+                    {
+                        await _diskAllocator.Allocate(segment.FilePath, segment.Offset + segment.Length, _cancellationToken);
+                    }
+
+                    // Write the segment to disk
+                    var offsetInPiece = segment.Offset - segments[0].Offset;
+                    var length = (int)segment.Length;
+                    var dataSlice = new byte[length];
+                    Array.Copy(piece.Data!, offsetInPiece, dataSlice, 0, length);
+
+                    await _fileIO.WriteAsync(segment.FilePath, dataSlice, segment.Offset, length, _cancellationToken);
+                }
             }
         }
     }
