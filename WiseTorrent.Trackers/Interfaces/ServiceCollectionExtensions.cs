@@ -1,11 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WiseTorrent.Trackers.Classes;
-using WiseTorrent.Trackers.Types;
+using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Trackers.Interfaces
 {
@@ -20,10 +16,17 @@ namespace WiseTorrent.Trackers.Interfaces
 				return key switch
 				{
 					PeerDiscoveryProtocol.HTTP => provider.GetRequiredService<HTTPTrackerClient>(),
+					PeerDiscoveryProtocol.HTTPS => provider.GetRequiredService<HTTPTrackerClient>(),
 					PeerDiscoveryProtocol.UDP => provider.GetRequiredService<UDPTrackerClient>(),
 					PeerDiscoveryProtocol.DHT => throw new NotImplementedException(),
 					_ => throw new ArgumentException($"Unknown parser type: {key}")
 				};
+			});
+			services.AddTransient<Func<TorrentSession, TrackerServiceTaskClient>>(sp => session =>
+			{
+				var logger = sp.GetRequiredService<ILogger<TrackerServiceTaskClient>>();
+				var clientFactory = sp.GetRequiredService<Func<PeerDiscoveryProtocol, ITrackerClient>>();
+				return new TrackerServiceTaskClient(logger, clientFactory, session);
 			});
 
 			return services;

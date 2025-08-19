@@ -1,6 +1,9 @@
+using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
+using Moq;
 using WiseTorrent.Parsing.Classes;
-using WiseTorrent.Parsing.Types;
-using WiseTorrent.Trackers.Types;
+using WiseTorrent.Tests.UtilitiesTests;
+using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Tests.ParsingTests
 {
@@ -29,7 +32,7 @@ namespace WiseTorrent.Tests.ParsingTests
 		[SetUp]
 		public void SetUp()
 		{
-			_parser = new TorrentParser();
+			_parser = new TorrentParser(new TestLogger<TorrentParser>(), new BEncodeReader(new TestLogger<BEncodeReader>()));
 		}
 
 		[Test]
@@ -43,7 +46,8 @@ namespace WiseTorrent.Tests.ParsingTests
 
 			Assert.IsNotNull(parsedMetadata.Announce);
 			Assert.That(parsedMetadata.Announce.Protocol, Is.EqualTo(PeerDiscoveryProtocol.UDP));
-			Assert.That(parsedMetadata.Announce.Url, Is.EqualTo("udp://tracker.leechers-paradise.org:6969"));
+			Assert.That(parsedMetadata.Announce.Url.Host, Is.EqualTo("tracker.leechers-paradise.org"));
+			Assert.That(parsedMetadata.Announce.Url.Port, Is.EqualTo(6969));
 
 			Assert.IsNotNull(parsedMetadata.AnnounceList);
 			List<List<ServerURL>> expectedAnnounceList =
