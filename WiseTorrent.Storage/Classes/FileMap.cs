@@ -8,7 +8,7 @@ using WiseTorrent.Storage.Types;
 
 namespace WiseTorrent.Storage.Classes
 {
-    public class FileMap : IFileMap
+    public class FileMap
     {
         private Dictionary<int, List<FileSegment>> pieceMap = new();
         private readonly long pieceLength;  // number of bytes in each piece
