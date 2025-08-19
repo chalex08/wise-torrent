@@ -5,8 +5,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using WiseTorrent.Pieces.Types;
 using WiseTorrent.Storage.Interfaces;
-using WiseTorrent.Storage.Types;
 
 namespace WiseTorrent.Storage.Classes
 {
@@ -14,23 +14,20 @@ namespace WiseTorrent.Storage.Classes
     {
         private readonly IDiskAllocator _diskAllocator;
         private readonly IFileIO _fileIO;
-        private FileMap _fileMap;
+        private FileMap? _fileMap;
         private readonly CancellationToken _cancellationToken;
 
         private ConcurrentQueue<Piece> pieceQueue = new();
         private readonly int maxPieceQueueSize;
 
-        private readonly Task _workerTask;
+        private Task _workerTask;
 
-        public FileManager(IDiskAllocator diskAllocator, IFileIO fileIO, FileMap fileMap, CancellationToken cancellationToken, int maxPieceQueueSize = 20)
+        public FileManager(IDiskAllocator diskAllocator, IFileIO fileIO, CancellationToken cancellationToken, int maxPieceQueueSize = 20)
         {
             _diskAllocator = diskAllocator;
             _fileIO = fileIO;
-            _fileMap = fileMap;
             _cancellationToken = cancellationToken;
             this.maxPieceQueueSize = maxPieceQueueSize;
-
-            _workerTask = Task.Run(() => WorkerLoop(), _cancellationToken);
         }
 
         // Queue piece for later writing
@@ -45,6 +42,24 @@ namespace WiseTorrent.Storage.Classes
             await WriteBatchAsync();
         }
 
+        // Attach a file map to the file manager
+        public void AttachFileMap(FileMap fileMap)
+        {
+            _fileMap = fileMap;
+        }
+
+        // Start file manager processing
+        public void StartProcessing()
+        {
+            if (_fileMap == null)
+                throw new InvalidOperationException("FileMap must be attached before starting processing.");
+
+            if (_workerTask != null)
+                throw new InvalidOperationException("File manager is already processing.");
+
+            _workerTask = Task.Run(() => WorkerLoop(), _cancellationToken);
+        }
+
         // Background loop that periodically writes queued pieces in batches
         private async Task WorkerLoop()
         {
@@ -56,8 +71,14 @@ namespace WiseTorrent.Storage.Classes
                     {
                         await WriteBatchAsync();
                     }
+                    else if (pieceQueue.Count > 0)
+                    {
+                        await Task.Delay(100, _cancellationToken); // Wait a short time to see if more pieces arrive
+                        await WriteBatchAsync();
+                    }
                     else
                     {
+                        // Idle
                         await Task.Delay(100, _cancellationToken);
                     }
                 }
