@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WiseTorrent.Storage.Interfaces;
+using WiseTorrent.Storage.Types;
 
-namespace WiseTorrent.Storage.Types
+namespace WiseTorrent.Storage.Classes
 {
-    public class FileMap
+    public class FileMap : IFileMap
     {
         private Dictionary<int, List<FileSegment>> pieceMap = new();
         private readonly long pieceLength;  // number of bytes in each piece
@@ -29,7 +31,7 @@ namespace WiseTorrent.Storage.Types
 
                 while (remaining > 0)
                 {
-                    long assignLength = Math.Min(pieceLength - (globalOffset % pieceLength), remaining);
+                    long assignLength = Math.Min(pieceLength - globalOffset % pieceLength, remaining);
 
                     if (!pieceMap.TryGetValue(pieceIndex, out var segments))
                     {
