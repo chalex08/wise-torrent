@@ -12,7 +12,7 @@ using WiseTorrent.Storage.Types;
 
 namespace WiseTorrent.Storage.Classes
 {
-    public class FileManager
+    public class FileManager : IFileManager
     {
         private readonly IDiskAllocator _diskAllocator;
         private readonly IFileIO _fileIO;
@@ -23,7 +23,7 @@ namespace WiseTorrent.Storage.Classes
             _fileIO = fileIO;
         }
 
-        public async Task ProcessPieceAsync(Piece piece, FileMap fileMap, CancellationToken cancellationToken)
+        public async Task WritePieceAsync(Piece piece, FileMap fileMap, CancellationToken cancellationToken)
         {
             try
             {
