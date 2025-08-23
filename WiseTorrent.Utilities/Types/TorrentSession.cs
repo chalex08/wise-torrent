@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using WiseTorrent.Storage.Types;
 
 namespace WiseTorrent.Utilities.Types
 {
@@ -7,8 +8,9 @@ namespace WiseTorrent.Utilities.Types
 	    public required TorrentInfo Info { get; init; }
 		public required byte[] InfoHash { get; init; }
 		public required Peer LocalPeer { get; init; }
+		public required FileMap FileMap { get; init; }
 
-		public long UploadedBytes { get; set; }
+        public long UploadedBytes { get; set; }
 		public long DownloadedBytes { get; set; }
 		public long TotalBytes { get; set; }
 		public long RemainingBytes { get; set; }
