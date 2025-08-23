@@ -17,13 +17,27 @@ namespace WiseTorrent.Storage.Classes
         }
 
         // Allocate disk space for a file
-        public async Task Allocate(string filePath, long fileSize, CancellationToken cancellationToken = default)
+        public async Task Allocate(string filePath, long requiredSize, CancellationToken cancellationToken = default)
         {
-            if (fileSize < 1)
+            if (requiredSize < 1)
                 return;
 
+            long currentSize = 0;
+
+            if (File.Exists(filePath))
+            {
+                var info = new FileInfo(filePath);
+                currentSize = info.Length;
+
+                if (currentSize >= requiredSize)
+                {
+                    return; // File large enough
+                }
+            }
+
+
             var buffer = new byte[1];
-            await _fileIO.WriteAsync(filePath, buffer, fileSize - 1, 0, cancellationToken);
+            await _fileIO.WriteAsync(filePath, buffer, requiredSize - 1, 1, cancellationToken);
         }
 
         // Deallocate disk space from a file
@@ -33,9 +47,15 @@ namespace WiseTorrent.Storage.Classes
         }
 
         // Verify disk space allocation for a file
-        public bool VerifyAllocation(string filePath)
+        public bool VerifyAllocation(string filePath, long requiredSize)
         {
-            return File.Exists(filePath);
+            if (!File.Exists(filePath))
+            {
+                return false;
+            }
+
+            var info = new FileInfo(filePath);
+            return info.Length >= requiredSize;
         }
     }
 }

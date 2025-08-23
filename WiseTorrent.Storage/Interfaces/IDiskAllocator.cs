@@ -19,6 +19,6 @@ namespace WiseTorrent.Storage.Interfaces
 
         // Check if a file has allocated disk space
         // filePath -> File path to check allocation for
-        bool VerifyAllocation(string filePath);
+        bool VerifyAllocation(string filePath, long requiredSize);
     }
 }
