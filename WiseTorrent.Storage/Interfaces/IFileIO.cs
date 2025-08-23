@@ -31,7 +31,8 @@ namespace WiseTorrent.Storage.Interfaces
             byte[] buffer,
             long offset,
             int count,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            int bufferOffset = 0);
 
         // Delete a file asynchronously
         Task DeleteAsync(string filePath, CancellationToken cancellationToken = default);

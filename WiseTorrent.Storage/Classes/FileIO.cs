@@ -29,7 +29,7 @@ namespace WiseTorrent.Storage.Classes
         }
 
         // Open the file for writing
-        public async Task WriteAsync(string filePath, byte[] buffer, long offset, int count, CancellationToken cancellationToken = default)
+        public async Task WriteAsync(string filePath, byte[] buffer, long offset, int count, CancellationToken cancellationToken = default, int bufferOffset = 0)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer), "Buffer cannot be null.");
@@ -47,7 +47,7 @@ namespace WiseTorrent.Storage.Classes
                        useAsync: true))
             {
                 stream.Seek(offset, SeekOrigin.Begin);
-                await stream.WriteAsync(buffer, 0, count, cancellationToken).ConfigureAwait(false);
+                await stream.WriteAsync(buffer, bufferOffset, count, cancellationToken).ConfigureAwait(false);
             }
         }
 
