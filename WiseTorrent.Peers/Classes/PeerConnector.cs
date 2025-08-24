@@ -62,8 +62,8 @@ namespace WiseTorrent.Peers.Classes
 			try
 			{
 				await _stream.WriteAsync(data, 0, data.Length, cToken);
-				TorrentSession.UploadedBytes += data.Length;
-				Peer.UploadedBytes += data.Length;
+				TorrentSession.Metrics.RecordSend(data.Length);
+				Peer.Metrics.RecordSend(data.Length);
 				Peer.LastActive = DateTime.UtcNow;
 				return true;
 			}
@@ -83,8 +83,8 @@ namespace WiseTorrent.Peers.Classes
 				int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, cToken);
 				if (bytesRead > 0)
 				{
-					TorrentSession.DownloadedBytes += bytesRead;
-					Peer.DownloadedBytes += bytesRead;
+					TorrentSession.Metrics.RecordReceive(bytesRead);
+					Peer.Metrics.RecordReceive(bytesRead);
 					Peer.LastActive = DateTime.UtcNow;
 				}
 				return bytesRead > 0 ? buffer[..bytesRead] : [];

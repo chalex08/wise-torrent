@@ -17,6 +17,9 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 		public async Task StartServiceTask(Peer peer, CancellationToken pCToken)
 		{
+			if (TorrentSession == null || PeerManager == null)
+				throw new InvalidOperationException("Dependencies not set");
+
 			while (!pCToken.IsCancellationRequested)
 			{
 				try
@@ -26,7 +29,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 					if (idleTime > interval)
 					{
-						await PeerManager!.SendPeerMessageAsync(peer, PeerMessage.CreateKeepAlive().Payload, pCToken);
+						PeerManager!.TryQueueMessage(peer, PeerMessage.CreateKeepAlive());
 						_logger.Info($"Keep alive sent to {peer.PeerID} after {idleTime.TotalSeconds:F1}s idle");
 					}
 

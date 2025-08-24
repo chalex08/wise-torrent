@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Text;
 
 namespace WiseTorrent.Utilities.Types
@@ -23,14 +24,11 @@ namespace WiseTorrent.Utilities.Types
 		public bool IsChoked { get; set; } = true;
 		public bool IsInterested { get; set; } = false;
 		public HashSet<int> AvailablePieces { get; set; } = new();
+		public ConcurrentDictionary<Block, DateTime> _pendingPieceRequests = new();
 
 		// Transfer Metrics 
-		public long DownloadedBytes { get; set; }
-		public long UploadedBytes { get; set; }
-		public long DownloadRate { get; set; } // bytes/sec
-		public long UploadRate { get; set; } // bytes/sec
-		public int PendingRequestCount { get; set; }
-		public TimeSpan AverageResponseTime { get; set; }
+		public PeerMetricsCollector Metrics { get; init; } = new();
+		public PeerMetricsSnapshot Snapshot { get; set; } = new();
 		public int TimeoutCount { get; set; }
 		public int RarePiecesHeldCount { get; set; }
 		public bool HasAllPieces { get; set; }
@@ -39,6 +37,7 @@ namespace WiseTorrent.Utilities.Types
 		// Performance scoring
 		public int CalculatePeerScore()
 		{
+			Snapshot = Metrics.GetSnapshot();
 			var responsivenessScore = GetResponsivenessScore(); // 0–25
 			var reliabilityScore = GetReliabilityScore(); // 0–20
 			var protocolScore = GetProtocolComplianceScore(); // 0–15
@@ -51,7 +50,7 @@ namespace WiseTorrent.Utilities.Types
 
 		private int GetResponsivenessScore()
 		{
-			TimeSpan avgResponseTime = AverageResponseTime; // e.g. from handshake, bitfield, piece replies
+			TimeSpan avgResponseTime = Snapshot.AverageResponseTime; // e.g. from handshake, bitfield, piece replies
 			if (avgResponseTime < TimeSpan.FromMilliseconds(200)) return 25;
 			if (avgResponseTime < TimeSpan.FromSeconds(1)) return 20;
 			if (avgResponseTime < TimeSpan.FromSeconds(3)) return 10;
@@ -78,8 +77,8 @@ namespace WiseTorrent.Utilities.Types
 
 		private int GetThroughputScore()
 		{
-			double downloadRate = DownloadRate;
-			double uploadRate = UploadRate;
+			double downloadRate = Snapshot.DownloadRate;
+			double uploadRate = Snapshot.UploadRate;
 
 			int score = 0;
 			if (downloadRate > 100_000) score += 15;

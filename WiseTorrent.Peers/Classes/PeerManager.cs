@@ -44,8 +44,9 @@ namespace WiseTorrent.Peers.Classes
 			{
 				await _peerConnectors[peer].ConnectAsync(cToken);
 				peer.ResetDecay();
-				_torrentSession?.ConnectedPeers.Add(peer);
-				_torrentSession?.OnPeerConnected.NotifyListeners(peer);
+				_torrentSession!.OutboundMessageQueues[peer] = new();
+				_torrentSession.ConnectedPeers.Add(peer);
+				_torrentSession.OnPeerConnected.NotifyListeners(peer);
 			}
 			catch (OperationCanceledException)
 			{
@@ -56,6 +57,14 @@ namespace WiseTorrent.Peers.Classes
 				_connectSemaphore.Release();
 			}
 
+		}
+
+		public void TryQueueMessage(Peer peer, PeerMessage message)
+		{
+			if (!_torrentSession!.OutboundMessageQueues[peer].TryEnqueue(message))
+			{
+				_logger.Error($"Queuing of {message.MessageType} message to {peer.PeerID} failed");
+			}
 		}
 
 		public async Task<bool> SendPeerMessageAsync(Peer peer, byte[] data, CancellationToken cToken)
@@ -114,34 +123,11 @@ namespace WiseTorrent.Peers.Classes
 			{
 				if (!_torrentSession.ConnectedPeers.Contains(peer)) peer.DecayScore();
 
-				peer.DownloadRate = CalculateDownloadRate(peer);
-				peer.UploadRate = CalculateUploadRate(peer);
-				peer.PendingRequestCount = CalculatePendingRequests(peer);
-				peer.AverageResponseTime = CalculateAverageResponseTime(peer);
+				peer.Metrics.RefreshRates();
 				peer.RarePiecesHeldCount = CalculateRarePiecesCount(peer);
 				peer.HasAllPieces = IsSeeder(peer);
 				peer.TimeoutCount += IsPeerTimedOut(peer) ? 1 : 0;
 			}
-		}
-
-		private long CalculateDownloadRate(Peer peer)
-		{
-			return 0;
-		}
-
-		private long CalculateUploadRate(Peer peer)
-		{
-			return 0;
-		}
-
-		private int CalculatePendingRequests(Peer peer)
-		{
-			return 0;
-		}
-
-		private TimeSpan CalculateAverageResponseTime(Peer peer)
-		{
-			return TimeSpan.FromSeconds(0);
 		}
 
 		private int CalculateRarePiecesCount(Peer peer)
@@ -151,7 +137,7 @@ namespace WiseTorrent.Peers.Classes
 
 		private bool IsSeeder(Peer peer)
 		{
-			return false;
+			return peer.AvailablePieces.Count == _torrentSession?.Info.PieceHashes.Length;
 		}
 
 		private bool IsPeerTimedOut(Peer peer)

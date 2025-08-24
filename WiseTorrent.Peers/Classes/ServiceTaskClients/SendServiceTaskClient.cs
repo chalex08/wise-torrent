@@ -17,7 +17,31 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 		public async Task StartServiceTask(Peer peer, CancellationToken pCToken)
 		{
-			await Task.FromResult(0);
+			if (TorrentSession == null || PeerManager == null)
+				throw new InvalidOperationException("Dependencies not set");
+
+			try
+			{
+				while (!pCToken.IsCancellationRequested)
+				{
+					var message = await TorrentSession.OutboundMessageQueues[peer].DequeueAsync(pCToken);
+					if (message == null) continue;
+
+					var bytes = message.ToBytes();
+					await PeerManager.SendPeerMessageAsync(peer, bytes, pCToken);
+
+					peer.LastActive = DateTime.UtcNow;
+				}
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.Info($"Send loop cancelled for peer {peer.PeerID}");
+			}
+			catch (Exception ex)
+			{
+				_logger.Warn($"Send loop error for peer {peer.PeerID}: {ex.Message}");
+			}
+
 		}
 	}
 }

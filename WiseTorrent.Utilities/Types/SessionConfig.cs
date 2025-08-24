@@ -16,5 +16,7 @@ namespace WiseTorrent.Utilities.Types
 		public static int MaxPeerSendThreads => (int)(1.5 * MaxSwarmSize);
 		public static int MaxPeerKeepAliveThreads => (int)(0.4 * MaxSwarmSize);
 		public static int MaxPeerUpdateStateThreads => (int)(0.6 * MaxSwarmSize);
+		public static int MaxOutboundMessageQueueSize => 1_000;
+		public static int BlockSizeBytes => 16_384;
 	}
 }

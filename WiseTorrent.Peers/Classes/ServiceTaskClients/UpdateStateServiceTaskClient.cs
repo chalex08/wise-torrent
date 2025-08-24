@@ -17,6 +17,9 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 		public async Task StartServiceTask(CancellationToken pCToken)
 		{
+			if (TorrentSession == null || PeerManager == null)
+				throw new InvalidOperationException("Dependencies not set");
+
 			while (!pCToken.IsCancellationRequested)
 			{
 				try
