@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using WiseTorrent.Peers.Types;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Tests.PeersTests
 {

@@ -1,7 +1,9 @@
-﻿namespace WiseTorrent.Peers.Interfaces
+﻿using WiseTorrent.Utilities.Types;
+
+namespace WiseTorrent.Peers.Interfaces
 {
 	public interface IPeerServiceTaskClient
 	{
-		Task StartServiceTask(CancellationToken cToken);
+		Task StartServiceTask(TorrentSession torrentSession, CancellationToken cToken);
 	}
 }

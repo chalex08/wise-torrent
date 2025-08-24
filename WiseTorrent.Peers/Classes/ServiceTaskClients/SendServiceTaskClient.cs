@@ -1,12 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using WiseTorrent.Peers.Interfaces;
+using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 {
-    class SendServiceTaskClient
-    {
-    }
+	internal class SendServiceTaskClient : IPeerChildServiceTaskClient
+	{
+		private readonly ILogger<SendServiceTaskClient> _logger;
+		public TorrentSession? TorrentSession { get; set; }
+		public IPeerManager? PeerManager { get; set; }
+
+		public SendServiceTaskClient(ILogger<SendServiceTaskClient> logger)
+		{
+			_logger = logger;
+		}
+
+		public async Task StartServiceTask(Peer peer, CancellationToken pCToken)
+		{
+		}
+	}
 }

@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace WiseTorrent.Utilities.Types
+﻿namespace WiseTorrent.Utilities.Types
 {
     public class TorrentSession
     {
@@ -21,11 +19,17 @@ namespace WiseTorrent.Utilities.Types
 		public List<ServerURL> TrackerUrls { get; init; } = new();
 		public int CurrentTrackerUrlIndex { get; set; }
 		public ServerURL CurrentTrackerUrl => TrackerUrls[CurrentTrackerUrlIndex];
+		public List<Peer> AllPeers { get; set; } = new();
 		public List<Peer> ConnectedPeers { get; set; } = new();
+		public Dictionary<Peer, PeerTaskBundle> PeerTasks { get; set; } = new();
 
 		public DateTime LastAnnounceTime { get; set; }
 		public int TrackerIntervalSeconds { get; set; }
 
 		public SessionEvent<List<Peer>> OnTrackerResponse = new();
+		public SessionEvent<(Peer, PeerMessage)> OnPeerMessageReceived = new();
+		public SessionEvent<Piece> OnPieceReceived = new();
+		public SessionEvent<Peer> OnPeerConnected = new();
+		public SessionEvent<Peer> OnPeerDisconnected = new();
 	}
 }

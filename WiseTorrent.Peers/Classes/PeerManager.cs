@@ -1,110 +1,228 @@
-﻿using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using WiseTorrent.Peers.Interfaces;
-using WiseTorrent.Peers.Types;
+﻿using WiseTorrent.Peers.Interfaces;
+using WiseTorrent.Utilities.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Peers.Classes
 {
-    internal class PeerManager : IPeerManager
-    {
-        private List<Peer> _knownPeers; 
+	internal class PeerManager : IPeerManager
+	{
+		private readonly ILogger<PeerManager> _logger;
+		private TorrentSession? _torrentSession;
+		private readonly Dictionary<Peer, PeerConnector> _peerConnectors = new();
+		private readonly Dictionary<Peer, DateTime> _disconnectTimestamps = new();
+		private readonly SemaphoreSlim _connectSemaphore = new(SessionConfig.MaxPeerConnectionThreads);
 
-        private readonly byte[] _infoHash;
-        private readonly string _localPeerId;
+		public PeerManager(ILogger<PeerManager> logger)
+		{
+			_logger = logger;
+		}
 
-        public PeerManager(byte[] infoHash, string localPeerId)
-        {
-            _infoHash = infoHash;
-            _localPeerId = localPeerId;
-        }
+		public async Task HandleTrackerResponse(TorrentSession torrentSession, ILogger<PeerConnector> peerConnectorsLogger, CancellationToken cToken)
+		{
+			if (torrentSession.AllPeers.Count == 0) return;
 
-        // main method for starting peer connection
-        public async Task HandleTrackerResponse(List<Peer> peers)
-        {
-            if (peers.Count == 0) return;
-            
-            _knownPeers = peers;
-            await ConnectToAllPeersAsync();
+			_torrentSession = torrentSession;
+			foreach (var peer in torrentSession.AllPeers)
+			{
+				if (!_peerConnectors.ContainsKey(peer))
+					_peerConnectors[peer] = new PeerConnector(peer, torrentSession, peerConnectorsLogger);
+			}
 
-            // subscribe to torrentSession OnPeerManagerResponse event
-            // invoke OnPeerManagerResponse(_activePeers) event
-        }
+			await ConnectToAllPeersAsync(cToken);
+		}
 
-        /// <summary>
-        /// attempts to establish tcp connection which every peer
-        /// if connection is successful = peer is added to the _connectedPeer list
-        /// </summary>
-        public async Task ConnectToAllPeersAsync()
-        {
-            var cts = new CancellationTokenSource();
-            var tasks = _knownPeers.Select(peer => ConnectToPeerAsync(peer, cts.Token));
-            await Task.WhenAll(tasks);
-        }
+		public async Task ConnectToAllPeersAsync(CancellationToken cToken)
+		{
+			var tasks = _torrentSession?.AllPeers.Take(SessionConfig.MaxSwarmSize).Select(peer => ConnectToPeerAsync(peer, cToken)) ?? [];
+			await Task.WhenAll(tasks);
+		}
 
-        public async Task ConnectToPeerAsync(Peer peer, CancellationToken token)
-        {
-            using var client = new TcpClient();
-            try
-            {
-                await client.ConnectAsync(peer.IPEndPoint.Address, peer.IPEndPoint.Port, token);
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine($"Connection to {peer.IPEndPoint.Address} was cancelled.");
-            }
-            peer.IsConnected = true;
-        }
+		public async Task ConnectToPeerAsync(Peer peer, CancellationToken cToken)
+		{
+			await _connectSemaphore.WaitAsync(cToken);
+			try
+			{
+				await _peerConnectors[peer].ConnectAsync(cToken);
+				peer.ResetDecay();
+				_torrentSession?.ConnectedPeers.Add(peer);
+				_torrentSession?.OnPeerConnected.NotifyListeners(peer);
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.Info($"Connection to {peer.PeerID} was cancelled.");
+			}
+			finally
+			{
+				_connectSemaphore.Release();
+			}
 
-        /// <summary>
-        /// attempts handshake by sending a interested protocol, if:
-        /// response = unchoked -> add to interestedPeer list
-        /// response = choked -> return
-        /// </summary>
-        /// 
+		}
 
-        public void DisconnectAll()
-        {
-            foreach (var peer in _knownPeers)
-            {
-                peer.IsConnected = false;
-            }
-            _knownPeers.Clear();
-        }
+		public async Task<bool> SendPeerMessageAsync(Peer peer, byte[] data, CancellationToken cToken)
+		{
+			try
+			{
+				return await _peerConnectors[peer].TrySendPeerMessageAsync(data, cToken);
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.Info($"Sending message to {peer.PeerID} was cancelled.");
+				return false;
+			}
+		}
 
-        public List<Peer> GetConnectedPeers()
-        {
-            return _knownPeers.Where(p => p.IsConnected).ToList();
-        }
+		public async Task<byte[]> ReceivePeerMessageAsync(Peer peer, CancellationToken cToken)
+		{
+			try
+			{
+				return await _peerConnectors[peer].TryReceivePeerMessageAsync(cToken);
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.Info($"Receiving message from {peer.PeerID} was cancelled.");
+				return [];
+			}
+		}
 
-        public void RemovePeer(string peerId)
-        {
-            var peer = _knownPeers.Where(p => p.PeerID == peerId).First();
-            
-            peer.IsConnected = false;
-            peer.LastActive = DateTime.UtcNow;
-        }
+		public async Task DisconnectAllPeersAsync(CancellationToken cToken)
+		{
+			if (_torrentSession == null) return;
 
-        public void MarkPeerActive(string peerId)
-        {
-            var peer = _knownPeers.Where(p => p.PeerID == peerId).First();
-            peer.LastActive = DateTime.UtcNow;
-        }
+			foreach (var peer in _torrentSession.ConnectedPeers)
+			{
+				await DisconnectPeerAsync(peer, cToken);
+			}
+		}
 
-        public void UpdatePeerStates()
-        {
-            foreach (var kvp in _knownPeers)
-            {
-                var peer = kvp;
-                TimeSpan idleTime = DateTime.UtcNow - peer.LastActive;
-                if (idleTime.TotalMinutes > 5)
-                {
-                    peer.IsConnected = false;
-                    // Optionally remove or deprioritize peer
-                }
-            }
-        }
-    }
+		public async Task DisconnectPeerAsync(Peer peer, CancellationToken cToken)
+		{
+			if (_torrentSession == null) return;
+
+			peer.IsConnected = false;
+			peer.LastActive = DateTime.UtcNow;
+			await _peerConnectors[peer].DisconnectAsync(cToken);
+			_disconnectTimestamps[peer] = DateTime.UtcNow;
+			_torrentSession.ConnectedPeers.Remove(peer);
+			_torrentSession.OnPeerDisconnected.NotifyListeners(peer);
+		}
+
+		public async Task UpdatePeerStatesAsync(CancellationToken cToken)
+		{
+			if (_torrentSession == null) return;
+
+			foreach (var peer in _torrentSession.AllPeers)
+			{
+				if (!_torrentSession.ConnectedPeers.Contains(peer)) peer.DecayScore();
+
+				peer.DownloadRate = CalculateDownloadRate(peer);
+				peer.UploadRate = CalculateUploadRate(peer);
+				peer.PendingRequestCount = CalculatePendingRequests(peer);
+				peer.AverageResponseTime = CalculateAverageResponseTime(peer);
+				peer.RarePiecesHeldCount = CalculateRarePiecesCount(peer);
+				peer.HasAllPieces = IsSeeder(peer);
+				peer.TimeoutCount += IsPeerTimedOut(peer) ? 1 : 0;
+			}
+		}
+
+		private long CalculateDownloadRate(Peer peer)
+		{
+			return 0;
+		}
+
+		private long CalculateUploadRate(Peer peer)
+		{
+			return 0;
+		}
+
+		private int CalculatePendingRequests(Peer peer)
+		{
+			return 0;
+		}
+
+		private TimeSpan CalculateAverageResponseTime(Peer peer)
+		{
+			return TimeSpan.FromSeconds(0);
+		}
+
+		private int CalculateRarePiecesCount(Peer peer)
+		{
+			return 0;
+		}
+
+		private bool IsSeeder(Peer peer)
+		{
+			return false;
+		}
+
+		private bool IsPeerTimedOut(Peer peer)
+		{
+			TimeSpan idleTime = DateTime.UtcNow - peer.LastReceived;
+			return idleTime.TotalSeconds > SessionConfig.PeerTimeoutSeconds;
+		}
+
+		public async Task UpdatePeerSelectionAsync(CancellationToken cToken)
+		{
+			if (_torrentSession == null) return;
+
+			foreach (var peer in _torrentSession.ConnectedPeers)
+			{
+				var score = peer.CalculatePeerScore();
+				if (score >= 80)
+				{
+					UnchokePeer(peer);
+					_logger.Info($"Peer {peer.PeerID} unchoked (Performance score: {score})");
+				}
+				else if (score >= 40)
+				{
+					MonitorPeer(peer);
+					_logger.Info($"Peer {peer.PeerID} choked, but monitored (Performance score: {score})");
+				}
+				else
+				{
+					await RotatePeer(peer, cToken);
+					_logger.Info($"Peer {peer.PeerID} replaced (Performance score: {score})");
+				}
+			}
+		}
+
+		private void UnchokePeer(Peer peer)
+		{
+			peer.IsChoked = false;
+			peer.IsInterested = true;
+		}
+
+		private void MonitorPeer(Peer peer)
+		{
+			peer.IsChoked = true;
+			peer.IsInterested = false;
+		}
+
+		private async Task RotatePeer(Peer peer, CancellationToken cToken)
+		{
+			await DisconnectPeerAsync(peer, cToken);
+			_logger.Info($"Peer {peer.PeerID} disconnected due to inactivity");
+
+			await ConnectNextBestPeer(cToken);
+		}
+
+		private async Task ConnectNextBestPeer(CancellationToken cToken)
+		{
+			var replacementPeer = _torrentSession?.AllPeers
+				.Except(_torrentSession.ConnectedPeers)
+				.OrderByDescending(p => p.CalculatePeerScore())
+				.FirstOrDefault(p => !IsInCooldown(p) && p.CalculatePeerScore() > 30);
+
+			if (replacementPeer != null)
+			{
+				await ConnectToPeerAsync(replacementPeer, cToken);
+				_logger.Info($"Peer {replacementPeer.PeerID} connected to replace under performing peer");
+			}
+		}
+
+		private bool IsInCooldown(Peer peer)
+		{
+			var cooldown = SessionConfig.PeerReconnectCooldownSeconds;
+			return _disconnectTimestamps.TryGetValue(peer, out var lastDisconnect) && DateTime.UtcNow - lastDisconnect < cooldown;
+		}
+	}
 }

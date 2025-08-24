@@ -14,4 +14,8 @@
     <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Types\" />
+  </ItemGroup>
+
 </Project>
