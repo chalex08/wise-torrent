@@ -1,10 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WiseTorrent.Peers.Classes;
+using WiseTorrent.Peers.Classes.ServiceTaskClients;
 
 namespace WiseTorrent.Peers.Interfaces
 {
@@ -14,6 +10,10 @@ namespace WiseTorrent.Peers.Interfaces
 		{
 			services.AddSingleton<IHandshake, Handshake>();
 			services.AddSingleton<IPeerManager, PeerManager>();
+			services.AddSingleton<IPeerChildServiceTaskClient, ReceiveServiceTaskClient>();
+			services.AddSingleton<IPeerChildServiceTaskClient, SendServiceTaskClient>();
+			services.AddSingleton<IPeerChildServiceTaskClient, KeepAliveServiceTaskClient>();
+			services.AddSingleton<IPeerSiblingServiceTaskClient, UpdateStateServiceTaskClient>();
 			return services;
 		}
 	}
