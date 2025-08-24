@@ -106,7 +106,7 @@ namespace WiseTorrent.Peers.Classes
 			_torrentSession.OnPeerDisconnected.NotifyListeners(peer);
 		}
 
-		public async Task UpdatePeerStatesAsync(CancellationToken cToken)
+		public void UpdatePeerStatesAsync(CancellationToken cToken)
 		{
 			if (_torrentSession == null) return;
 

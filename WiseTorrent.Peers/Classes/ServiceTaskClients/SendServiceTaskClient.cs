@@ -17,6 +17,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 		public async Task StartServiceTask(Peer peer, CancellationToken pCToken)
 		{
+			await Task.FromResult(0);
 		}
 	}
 }

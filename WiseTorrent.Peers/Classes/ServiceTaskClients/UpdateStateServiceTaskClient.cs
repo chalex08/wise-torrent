@@ -22,7 +22,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				try
 				{
 					await Task.Delay(SessionConfig.PeerStateRefreshTimerSeconds, pCToken);
-					await PeerManager!.UpdatePeerStatesAsync(pCToken);
+					PeerManager!.UpdatePeerStatesAsync(pCToken);
 					await PeerManager!.UpdatePeerSelectionAsync(pCToken);
 				}
 				catch (Exception ex)

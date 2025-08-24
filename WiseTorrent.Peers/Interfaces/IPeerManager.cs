@@ -13,7 +13,7 @@ namespace WiseTorrent.Peers.Interfaces
 		Task<byte[]> ReceivePeerMessageAsync(Peer peer, CancellationToken cToken);
 		Task DisconnectAllPeersAsync(CancellationToken cToken);
 		Task DisconnectPeerAsync(Peer peer, CancellationToken cToken);
-		Task UpdatePeerStatesAsync(CancellationToken cToken);
+		void UpdatePeerStatesAsync(CancellationToken cToken);
 		Task UpdatePeerSelectionAsync(CancellationToken cToken);
 	}
 }
