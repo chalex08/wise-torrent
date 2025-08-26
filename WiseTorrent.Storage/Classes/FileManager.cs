@@ -28,7 +28,7 @@ namespace WiseTorrent.Storage.Classes
             {
                 var segments = fileMap.Resolve(block.PieceIndex);
 
-                int blockRemaining = 0;
+                int blockRemaining = block.Length;
                 int blockOffsetInData = 0;  // How far we are in the block data
                 long pieceRelativeOffset = 0;  // Track offset within piece
 
@@ -76,7 +76,7 @@ namespace WiseTorrent.Storage.Classes
                     // Update trackers
                     blockRemaining -= writeLength;
                     blockOffsetInData += writeLength;
-                    pieceRelativeOffset += segment.Length;
+                    pieceRelativeOffset += writeLength;
                 }
             }
             catch (OperationCanceledException)

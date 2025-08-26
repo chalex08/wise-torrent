@@ -25,7 +25,12 @@ namespace WiseTorrent.Tests.StorageTests
 
             // Mock FileIO.WriteAsync to just complete
             _mockFileIO
-                .Setup(f => f.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Setup(f => f.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<int>()))
+                .Returns(Task.CompletedTask);
+
+            // Mock FileIO.DeleteAsync to just complete
+            _mockFileIO
+                .Setup(fileIO => fileIO.DeleteAsync(_testFilePath, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
         }
 
@@ -43,9 +48,8 @@ namespace WiseTorrent.Tests.StorageTests
         {
             // Arrange
             long fileSize = 1024; // 1 KB
-            var buffer = new byte[1];
             _mockFileIO
-                .Setup(fileIO => fileIO.WriteAsync(_testFilePath, buffer, fileSize - 1, 0, It.IsAny<CancellationToken>()))
+                .Setup(fileIO => fileIO.WriteAsync(_testFilePath, It.IsAny<Byte[]>(), fileSize - 1, 0, It.IsAny<CancellationToken>(), It.IsAny<int>()))
                 .Returns(Task.CompletedTask);
 
             // Act
@@ -53,7 +57,7 @@ namespace WiseTorrent.Tests.StorageTests
 
             // Assert
             _mockFileIO.Verify(
-                fileIO => fileIO.WriteAsync(_testFilePath, buffer, fileSize - 1, 0, It.IsAny<CancellationToken>()),
+                fileIO => fileIO.WriteAsync(_testFilePath, It.IsAny<Byte[]>(), fileSize - 1, 1, It.IsAny<CancellationToken>(), It.IsAny<int>()),
                 Times.Once,
                 "Allocate should write a single byte at the correct offset to allocate disk space."
             );
@@ -70,7 +74,7 @@ namespace WiseTorrent.Tests.StorageTests
 
             // Assert
             _mockFileIO.Verify(
-                fileIO => fileIO.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+                fileIO => fileIO.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<int>()),
                 Times.Never,
                 "Allocate should not perform any write operation if file size is less than one."
             );
@@ -79,11 +83,6 @@ namespace WiseTorrent.Tests.StorageTests
         [Test]
         public async Task Deallocate_ShouldDeleteFile()
         {
-            // Arrange
-            _mockFileIO
-                .Setup(fileIO => fileIO.DeleteAsync(_testFilePath, It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-
             // Act
             await _diskAllocator.Deallocate(_testFilePath);
 
@@ -99,23 +98,37 @@ namespace WiseTorrent.Tests.StorageTests
         public void VerifyAllocation_ShouldReturnTrueIfFileExists()
         {
             // Arrange
-            File.WriteAllText(_testFilePath, "Temporary file content");
+            var data = "Temporary file content";
+            var dataLength = data.Length;
+            File.WriteAllText(_testFilePath, data);
 
             // Act
-            bool result = _diskAllocator.VerifyAllocation(_testFilePath);
+            bool result = _diskAllocator.VerifyAllocation(_testFilePath, dataLength);
 
             // Assert
-            Assert.IsTrue(result, "VerifyAllocation should return true if the file exists.");
+            Assert.IsTrue(result, "VerifyAllocation should return true if the file exists with correct allocation size.");
         }
 
         [Test]
         public void VerifyAllocation_ShouldReturnFalseIfFileDoesNotExist()
         {
             // Act
-            bool result = _diskAllocator.VerifyAllocation(_testFilePath);
+            bool result = _diskAllocator.VerifyAllocation(_testFilePath, 30);
 
             // Assert
             Assert.IsFalse(result, "VerifyAllocation should return false if the file does not exist.");
+        }
+
+        [Test]
+        public void VerifyAllocation_ShouldReturnFalseIfFileIsNotRequiredSize()
+        {
+            File.WriteAllText(_testFilePath, "Temporary file content");
+
+            // Act
+            bool result = _diskAllocator.VerifyAllocation(_testFilePath, 50);
+
+            // Assert
+            Assert.IsFalse(result, "VerifyAllocation should return false if the file is not required size");
         }
     }
 }
