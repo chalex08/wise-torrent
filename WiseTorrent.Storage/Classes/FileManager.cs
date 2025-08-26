@@ -6,9 +6,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using WiseTorrent.Pieces.Types;
 using WiseTorrent.Storage.Interfaces;
-using WiseTorrent.Storage.Types;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Storage.Classes
 {
@@ -22,32 +21,62 @@ namespace WiseTorrent.Storage.Classes
             _diskAllocator = diskAllocator;
             _fileIO = fileIO;
         }
-
-        public async Task WritePieceAsync(Piece piece, FileMap fileMap, CancellationToken cancellationToken)
+        
+        public async Task WriteBlockAsync(Block block, FileMap fileMap, CancellationToken cancellationToken)
         {
             try
             {
-                var segments = fileMap.Resolve(piece.Index);
-                var firstSegmentOffset = segments[0].Offset;
+                var segments = fileMap.Resolve(block.PieceIndex);
+
+                int blockRemaining = 0;
+                int blockOffsetInData = 0;  // How far we are in the block data
+                long pieceRelativeOffset = 0;  // Track offset within piece
 
                 foreach (var segment in segments)
                 {
-                    // Ensure file allocation for current segment
-                    if (!_diskAllocator.VerifyAllocation(segment.FilePath, segment.Offset + segment.Length))
+                    if (pieceRelativeOffset + segment.Length <= block.Offset)
                     {
-                        await _diskAllocator.Allocate(segment.FilePath, segment.Offset + segment.Length, cancellationToken);
+                        pieceRelativeOffset += segment.Length;
+                        continue;  // This segment is before the block offset
                     }
 
-                    // Write the segment to disk
-                    var pieceOffset = (int)(segment.Offset - firstSegmentOffset);
+                    // If already written whole block, stop
+                    if (blockRemaining <= 0)
+                    {
+                        break;
+                    }
 
+                    // Figure out where inside this segment the block intersects
+                    long segmentOffsetWithinPiece = Math.Max(block.Offset - pieceRelativeOffset, 0);
+                    long writeStartInFile = segment.Offset + segmentOffsetWithinPiece;
+
+                    // How much can we write into this segment?
+                    int writeLength = (int)Math.Min(
+                        segment.Length - segmentOffsetWithinPiece,
+                        blockRemaining);
+
+                    // Ensure file allocation
+                    if (!_diskAllocator.VerifyAllocation(segment.FilePath, writeStartInFile + writeLength))
+                    {
+                        await _diskAllocator.Allocate(
+                            segment.FilePath,
+                            writeStartInFile + writeLength,
+                            cancellationToken);
+                    }
+
+                    // Write data
                     await _fileIO.WriteAsync(
                         segment.FilePath,
-                        piece.Data!,
-                        segment.Offset,
-                        (int)segment.Length,
+                        block.Data!,
+                        writeStartInFile,
+                        writeLength,
                         cancellationToken,
-                        pieceOffset);
+                        blockOffsetInData);
+
+                    // Update trackers
+                    blockRemaining -= writeLength;
+                    blockOffsetInData += writeLength;
+                    pieceRelativeOffset += segment.Length;
                 }
             }
             catch (OperationCanceledException)
