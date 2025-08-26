@@ -1,8 +1,4 @@
-﻿using System.Text;
-using WiseTorrent.Pieces.Types;
-using WiseTorrent.Storage.Types;
-
-namespace WiseTorrent.Utilities.Types
+﻿namespace WiseTorrent.Utilities.Types
 {
     public class TorrentSession
     {
@@ -11,8 +7,7 @@ namespace WiseTorrent.Utilities.Types
 		public required Peer LocalPeer { get; init; }
 		public required FileMap FileMap { get; init; }
 
-        public long UploadedBytes { get; set; }
-		public long DownloadedBytes { get; set; }
+		public TorrentSessionMetricsCollector Metrics { get; init; } = new();
 		public long TotalBytes { get; set; }
 		public long RemainingBytes { get; set; }
 		public long ConnectionId { get; set; }
@@ -24,12 +19,17 @@ namespace WiseTorrent.Utilities.Types
 		public List<ServerURL> TrackerUrls { get; init; } = new();
 		public int CurrentTrackerUrlIndex { get; set; }
 		public ServerURL CurrentTrackerUrl => TrackerUrls[CurrentTrackerUrlIndex];
+		public List<Peer> AllPeers { get; set; } = new();
 		public List<Peer> ConnectedPeers { get; set; } = new();
+		public Dictionary<Peer, PeerTaskBundle> PeerTasks { get; set; } = new();
+		public Dictionary<Peer, OutboundMessageQueue> OutboundMessageQueues { get; set; } = new();
 
-		public DateTime LastAnnounceTime { get; set; }
 		public int TrackerIntervalSeconds { get; set; }
 
 		public SessionEvent<List<Peer>> OnTrackerResponse = new();
-		public SessionEvent<Piece> OnPieceReceived = new();
+		public SessionEvent<(Peer, PeerMessage)> OnPeerMessageReceived = new();
+		public SessionEvent<Block> OnBlockReceived = new();
+		public SessionEvent<Peer> OnPeerConnected = new();
+		public SessionEvent<Peer> OnPeerDisconnected = new();
 	}
 }
