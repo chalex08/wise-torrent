@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WiseTorrent.Pieces\WiseTorrent.Pieces.csproj" />
     <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
   </ItemGroup>
 

@@ -1,9 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WiseTorrent.Pieces.Classes;
 
 namespace WiseTorrent.Pieces.Interfaces
@@ -12,8 +7,7 @@ namespace WiseTorrent.Pieces.Interfaces
 	{
 		public static IServiceCollection AddPiecesDependencies(this IServiceCollection services)
 		{
-			services.AddSingleton<IPieceManager, PieceManager>();
-			services.AddSingleton<IPieceSelector, PieceSelector>();
+			services.AddSingleton<Func<int, IPieceManager>>(totalPieceCount => new PieceManager(totalPieceCount));
 			return services;
 		}
 	}

@@ -1,4 +1,5 @@
 ﻿using WiseTorrent.Peers.Interfaces;
+using WiseTorrent.Pieces.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
 
@@ -8,7 +9,11 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 	{
 		private readonly ILogger<PeerServiceTaskClient> _logger;
 		private readonly ILogger<PeerConnector> _peerConnectorLogger;
+		private readonly ILogger<PeerMessageHandler> _peerMessageHandlerLogger;
 		private readonly IPeerManager _peerManager;
+		private readonly Func<int, IPieceManager> _pieceManagerFactory;
+		private IPieceManager? _pieceManager;
+		private PeerMessageHandler? _peerMessageHandler;
 		private readonly List<IPeerChildServiceTaskClient> _childServiceTaskClients;
 		private readonly List<IPeerSiblingServiceTaskClient> _siblingServiceTaskClients;
 		private CancellationToken CToken { get; set; }
@@ -26,12 +31,15 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		};
 
 		public PeerServiceTaskClient(
-			IPeerManager peerManager, ILogger<PeerServiceTaskClient> logger, ILogger<PeerConnector> peerConnectorLogger,
+			IPeerManager peerManager, Func<int, IPieceManager> pieceManagerFactory,
+			ILogger<PeerServiceTaskClient> logger, ILogger<PeerConnector> peerConnectorLogger, ILogger<PeerMessageHandler> peerMessageHandlerLogger,
 			List<IPeerChildServiceTaskClient> childServiceTaskClients, List<IPeerSiblingServiceTaskClient> siblingServiceTaskClients)
 		{
+			_peerManager = peerManager;
+			_pieceManagerFactory = pieceManagerFactory;
 			_logger = logger;
 			_peerConnectorLogger = peerConnectorLogger;
-			_peerManager = peerManager;
+			_peerMessageHandlerLogger = peerMessageHandlerLogger;
 			_childServiceTaskClients = childServiceTaskClients;
 			_siblingServiceTaskClients = siblingServiceTaskClients;
 		}
@@ -39,7 +47,14 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		public async Task StartServiceTask(TorrentSession torrentSession, CancellationToken cToken)
 		{
 			CToken = cToken;
+			_pieceManager = _pieceManagerFactory(torrentSession.Info.PieceHashes.Length);
+			_peerMessageHandler = new PeerMessageHandler(_peerMessageHandlerLogger, torrentSession, _peerManager, _pieceManager);
+
+			InitialisePieces(torrentSession);
+			_logger.Info("Initialised pieces");
+
 			_logger.Info("Peer initialisation started");
+			_peerManager.PieceManager = _pieceManager;
 			await _peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken);
 			_logger.Info("Connected to peers");
 
@@ -52,6 +67,9 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			_logger.Info("Starting peer sibling tasks");
 			StartPeerSiblingTasks(torrentSession);
 			_logger.Info("Successfully started peer sibling tasks");
+
+			SubscribeToEvents(torrentSession);
+			_logger.Info("Subscribed to events");
 
 			_logger.Info("Peer service task started");
 			while (!CToken.IsCancellationRequested)
@@ -70,6 +88,15 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			await StopAllPeerServiceTasks(torrentSession);
 
 			_logger.Info("Peer service task, and all child service tasks, stopped");
+		}
+
+		private void InitialisePieces(TorrentSession torrentSession)
+		{
+			var index = 0;
+			foreach (var pieceHash in torrentSession.Info.PieceHashes)
+			{
+				torrentSession.Pieces.Add(new Piece(index++, pieceHash, _peerManager.GetPieceLength(index)));
+			}
 		}
 
 		private void InitialiseServiceTaskClients(TorrentSession torrentSession)
@@ -113,6 +140,32 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			{
 				var namedSemaphoreSlim = _siblingSemaphoreSlims[clientIterator++];
 				SafeRun(() => client.StartServiceTask(CToken), namedSemaphoreSlim.Item1, namedSemaphoreSlim.Item2);
+			});
+		}
+
+		private void SubscribeToEvents(TorrentSession torrentSession)
+		{
+			torrentSession.OnTrackerResponse.Subscribe(peers =>
+			{
+				List<Peer> newPeers = peers.Where(p => !torrentSession.AllPeers.Contains(p)).ToList();
+				torrentSession.AllPeers.AddRange(newPeers);
+				_peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken, newPeers);
+			});
+
+			torrentSession.OnPeerMessageReceived.Subscribe(peeredMessage =>
+			{
+				_peerMessageHandler!.HandleMessage(peeredMessage.Item1, peeredMessage.Item2, CToken);
+			});
+
+			torrentSession.OnBlockReadFromDisk.Subscribe(peerBlock =>
+			{
+				_peerManager.TryQueueMessage(peerBlock.Item1, PeerMessage.CreatePieceMessage(peerBlock.Item2));
+			});
+
+			torrentSession.OnPeerDisconnected.Subscribe(peer =>
+			{
+				torrentSession.PendingRequests.TryRemove(peer, out _);
+				_pieceManager?.RemovePeerFromRarity(peer.AvailablePieces);
 			});
 		}
 

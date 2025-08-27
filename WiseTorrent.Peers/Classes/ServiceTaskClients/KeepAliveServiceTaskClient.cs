@@ -33,7 +33,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 						_logger.Info($"Keep alive sent to {peer.PeerID} after {idleTime.TotalSeconds:F1}s idle");
 					}
 
-					await Task.Delay(interval, pCToken);
+					await Task.Delay(interval, pCToken); // has to be refreshable upon LastActive update
 				}
 				catch (Exception ex)
 				{

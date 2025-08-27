@@ -21,10 +21,11 @@ namespace WiseTorrent.Utilities.Types
 		public bool HandshakeCompleted { get; set; } = false;
 		public bool BitfieldReceived { get; set; } = false;
 		public bool FollowsMessageOrder { get; set; } = true;
+		public PeerProtocolStage ProtocolStage;
 		public bool IsChoked { get; set; } = true;
 		public bool IsInterested { get; set; } = false;
 		public HashSet<int> AvailablePieces { get; set; } = new();
-		public ConcurrentDictionary<Block, DateTime> _pendingPieceRequests = new();
+		public ConcurrentDictionary<Block, DateTime> PendingPieceRequests = new();
 
 		// Transfer Metrics 
 		public PeerMetricsCollector Metrics { get; init; } = new();
@@ -45,6 +46,11 @@ namespace WiseTorrent.Utilities.Types
 			var swarmValueScore = GetSwarmValueScore(); // 0–15
 
 			var totalScore = responsivenessScore + reliabilityScore + protocolScore + throughputScore + swarmValueScore;
+			if (TimeoutCount >= 1 && totalScore > 80)
+				totalScore = 80;
+			else if (TimeoutCount >= 3 && totalScore > 40)
+				totalScore = 40;
+
 			return (int)(totalScore * DecayMultiplier);
 		}
 
@@ -109,6 +115,25 @@ namespace WiseTorrent.Utilities.Types
 		public void DecayScore()
 		{
 			DecayMultiplier *= 0.95;
+		}
+
+		public byte[] BuildBitfield(int totalPieces)
+		{
+			int byteCount = (totalPieces + 7) / 8;
+			byte[] bitfield = new byte[byteCount];
+
+			foreach (int pieceIndex in AvailablePieces)
+			{
+				if (pieceIndex < 0 || pieceIndex >= totalPieces)
+					continue;
+
+				int byteIndex = pieceIndex / 8;
+				int bitIndex = 7 - (pieceIndex % 8); // most significant bit first
+
+				bitfield[byteIndex] |= (byte)(1 << bitIndex);
+			}
+
+			return bitfield;
 		}
 
 		public override bool Equals(object? obj)

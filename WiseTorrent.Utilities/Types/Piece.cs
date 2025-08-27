@@ -6,9 +6,8 @@ namespace WiseTorrent.Utilities.Types
 	{
 		public int Index { get; }
 		public byte[] ExpectedHash { get; }
-		public byte[]? Data { get; private set; }
 		public bool State { get; private set; }
-		public int Length => Data?.Length ?? 0;
+		public int Length => Blocks.Sum(b => b.Data?.Length ?? 0);
 		public IEnumerable<Block> Blocks { get; private set; }
 
 		public int DownloadAttempts { get; private set; }
@@ -20,10 +19,10 @@ namespace WiseTorrent.Utilities.Types
 			Index = index;
 			ExpectedHash = expectedHash;
 			State = false;
-			Blocks = SplitPiece(index, pieceLength);
+			Blocks = SplitPieceToBlocks(index, pieceLength);
 		}
 
-		private IEnumerable<Block> SplitPiece(int pieceIndex, int pieceLength)
+		public static IEnumerable<Block> SplitPieceToBlocks(int pieceIndex, int pieceLength)
 		{
 			for (int offset = 0; offset < pieceLength; offset += SessionConfig.BlockSizeBytes)
 			{
@@ -32,23 +31,15 @@ namespace WiseTorrent.Utilities.Types
 			}
 		}
 
-
-		public void SetData(byte[] data)
-		{
-			if (State) return; // prevent overwriting validated data
-			Data = data;
-			DownloadAttempts++;
-		}
-
 		private bool IsValid()
 		{
-			if (Data == null) return false;
-			return SHA1.HashData(Data).SequenceEqual(ExpectedHash);
+			if (Blocks.Any(b => b.Data == null)) return false;
+			return SHA1.HashData((byte[])Blocks.SelectMany(b => b.Data!)).SequenceEqual(ExpectedHash);
 		}
 
 		public void Validate()
 		{
-			if (Data == null)
+			if (Blocks.Any(b => b.Data == null))
 			{
 				State = false;
 				return;
@@ -59,6 +50,11 @@ namespace WiseTorrent.Utilities.Types
 
 			if (!State)
 				ValidationFailures++;
+		}
+
+		public bool IsPieceComplete()
+		{
+			return Blocks.All(b => b.Data != null);
 		}
 	}
 }

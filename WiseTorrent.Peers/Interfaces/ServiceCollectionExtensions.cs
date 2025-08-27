@@ -8,7 +8,6 @@ namespace WiseTorrent.Peers.Interfaces
 	{
 		public static IServiceCollection AddPeersDependencies(this IServiceCollection services)
 		{
-			services.AddSingleton<IHandshake, Handshake>();
 			services.AddSingleton<IPeerManager, PeerManager>();
 			services.AddSingleton<IPeerChildServiceTaskClient, ReceiveServiceTaskClient>();
 			services.AddSingleton<IPeerChildServiceTaskClient, SendServiceTaskClient>();

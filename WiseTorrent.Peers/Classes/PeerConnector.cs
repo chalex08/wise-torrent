@@ -21,33 +21,18 @@ namespace WiseTorrent.Peers.Classes
 		private TcpClient Client { get; }
 		private NetworkStream? _stream;
 
-		public async Task ConnectAsync(CancellationToken token)
+		public async Task InitiateHandshakeAsync(CancellationToken token)
 		{
 			try
 			{
 				_logger.Info($"Attempting connection (PeerID: {Peer.PeerID})");
 				await Client.ConnectAsync(Peer.IPEndPoint.Address, Peer.IPEndPoint.Port, token);
-				var stream = Client.GetStream();
+				_stream = Client.GetStream();
 
 				_logger.Info($"Connection successful. Attempting handshake (PeerID: {Peer.PeerID})");
-				var handshake = new Handshake();
-				var handshakeBytes = handshake.CreateHandshake(TorrentSession.InfoHash, TorrentSession.LocalPeer.PeerID!);
-				await stream.WriteAsync(handshakeBytes, 0, handshakeBytes.Length, token);
-
-				byte[] response = new byte[68];
-				int bytesRead = await stream.ReadAsync(response, 0, response.Length, token);
-
-				if (bytesRead != 68 || !handshake.TryParseHandshake(response, out var receivedInfoHash, out var receivedPeerId))
-					throw new InvalidOperationException("Invalid handshake response.");
-
-				if (!handshake.IsValidHandshake(receivedInfoHash, TorrentSession.InfoHash))
-					throw new InvalidOperationException("InfoHash mismatch.");
-
-				Peer.PeerID = receivedPeerId;
-				Peer.IsConnected = true;
-				Peer.LastActive = DateTime.UtcNow;
-				_stream = stream;
-				_logger.Info($"Handshake successful. Peer now connected (PeerID: {Peer.PeerID})");
+				var handshake = new PeerMessage(new HandshakeMessage(TorrentSession.InfoHash, TorrentSession.LocalPeer.PeerID!));
+				TorrentSession.OutboundMessageQueues[Peer].TryEnqueue(handshake);
+				Peer.ProtocolStage = PeerProtocolStage.AwaitingHandshake;
 			}
 			catch (Exception ex)
 			{

@@ -20,6 +20,7 @@
 	{
 		// Type of the message
 		public PeerMessageType MessageType { get; set; }
+		public HandshakeMessage? HandshakeMessage { get; set; }
 
 		// Optional payload data
 		public byte[] Payload { get; set; } = Array.Empty<byte>();
@@ -31,6 +32,11 @@
 			Payload = payload ?? Array.Empty<byte>();
 		}
 
+		public PeerMessage(HandshakeMessage handshakeMessage)
+		{
+			HandshakeMessage = handshakeMessage;
+		}
+
 		// Serializes the message into a byte array for sending
 		public byte[] ToBytes()
 		{
@@ -40,6 +46,10 @@
 			{
 				// Keep-alive message: 4-byte length of zero
 				ms.Write(BitConverter.GetBytes(0).Reverse().ToArray(), 0, 4);
+			}
+			else if (HandshakeMessage != null)
+			{
+				ms.Write(HandshakeMessage.ToBytes());
 			}
 			else
 			{
@@ -77,6 +87,84 @@
 		public static PeerMessage CreateKeepAlive()
 		{
 			return new PeerMessage(PeerMessageType.KeepAlive);
+		}
+
+		public static PeerMessage CreateRequestMessage(Block block)
+		{
+			const byte messageId = (byte)PeerMessageType.Request; // 'request' message
+			const int payloadLength = 13; // piece index + offset + length
+
+			var buffer = new byte[4 + payloadLength]; // total = 17 bytes
+
+			// Length prefix (big-endian)
+			WriteInt(buffer, 0, payloadLength);
+
+			// Message ID
+			buffer[4] = messageId;
+
+			// Piece index
+			WriteInt(buffer, 5, block.PieceIndex);
+
+			// Block offset
+			WriteInt(buffer, 9, block.Offset);
+
+			// Block length
+			WriteInt(buffer, 13, block.Length);
+
+			return new PeerMessage(PeerMessageType.Request, buffer);
+		}
+
+		public static PeerMessage CreatePieceMessage(Block block)
+		{
+			const byte messageId = (byte)PeerMessageType.Piece; // 'piece' message ID
+			int dataLength = block.Data!.Length;
+			int payloadLength = 1 + 4 + 4 + dataLength; // ID + index + offset + data
+
+			var buffer = new byte[4 + payloadLength]; // total = 4 (length prefix) + payload
+
+			// Length prefix (big-endian)
+			WriteInt(buffer, 0, payloadLength);
+
+			// Message ID
+			buffer[4] = messageId;
+
+			// Piece index
+			WriteInt(buffer, 5, block.PieceIndex);
+
+			// Block offset
+			WriteInt(buffer, 9, block.Offset);
+
+			// Block data
+			Buffer.BlockCopy(block.Data, 0, buffer, 13, dataLength);
+
+			return new PeerMessage(PeerMessageType.Piece, buffer);
+		}
+
+		public static PeerMessage CreateHaveMessage(int pieceIndex)
+		{
+			const byte messageId = (byte)PeerMessageType.Have; // 'have' message ID
+			const int payloadLength = 5; // 1 byte for ID + 4 bytes for piece index
+
+			var buffer = new byte[4 + payloadLength]; // 4-byte length prefix + payload
+
+			// Length prefix (big-endian)
+			WriteInt(buffer, 0, payloadLength);
+
+			// Message ID
+			buffer[4] = messageId;
+
+			// Piece index
+			WriteInt(buffer, 5, pieceIndex);
+
+			return new PeerMessage(PeerMessageType.Have, buffer);
+		}
+
+		private static void WriteInt(byte[] buffer, int offset, int value)
+		{
+			buffer[offset] = (byte)((value >> 24) & 0xFF);
+			buffer[offset + 1] = (byte)((value >> 16) & 0xFF);
+			buffer[offset + 2] = (byte)((value >> 8) & 0xFF);
+			buffer[offset + 3] = (byte)(value & 0xFF);
 		}
 
 		// For debugging/logging
