@@ -23,8 +23,8 @@ namespace WiseTorrent.Trackers.Classes
 				+ "?info_hash=" + HttpUtility.UrlEncode(torrentSession.InfoHash)
 				+ "&peer_id=" + HttpUtility.UrlEncode(torrentSession.LocalPeer.PeerIDBytes)
 				+ "&port=" + torrentSession.LocalPeer.IPEndPoint.Port
-				+ "&uploaded=" + torrentSession.UploadedBytes
-				+ "&downloaded=" + torrentSession.DownloadedBytes
+				+ "&uploaded=" + torrentSession.Metrics.TotalUploadedBytes
+				+ "&downloaded=" + torrentSession.Metrics.TotalUploadedBytes
 				+ "&left=" + torrentSession.RemainingBytes
 				+ (torrentSession.CurrentEvent != EventState.None ? "&event=" + torrentSession.CurrentEvent.ToURLString() : String.Empty);
 		}
