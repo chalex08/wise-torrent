@@ -14,6 +14,7 @@ namespace WiseTorrent.Storage.Interfaces
 		{
 			services.AddSingleton<IDiskAllocator, DiskAllocator>();
 			services.AddSingleton<IFileIO, FileIO>();
+			services.AddSingleton<IFileManager, FileManager>();
 			return services;
 		}
 	}

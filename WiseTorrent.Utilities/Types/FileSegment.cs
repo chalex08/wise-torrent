@@ -4,10 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WiseTorrent.Tests.StorageTests
+namespace WiseTorrent.Utilities.Types
 {
-	[TestFixture]
-	public class StorageTests
-	{
-	}
+    public record FileSegment(string FilePath, long Offset, long Length);
 }
