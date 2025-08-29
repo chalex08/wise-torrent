@@ -1,10 +1,11 @@
 ﻿using System.Collections.Concurrent;
+using WiseTorrent.Core.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
 
-namespace WiseTorrent.Core
+namespace WiseTorrent.Core.Classes
 {
-	public class TorrentSessionManager
+	internal class TorrentSessionManager : ITorrentSessionManager
 	{
 		private readonly ILogger<TorrentSessionManager> _logger;
 
@@ -18,6 +19,7 @@ namespace WiseTorrent.Core
 		public void AddSession(TorrentSession session)
 		{
 			_sessions[session.InfoHash] = session;
+			_logger.Info($"Added new torrent session (Torrent Name: {session.Info.Name})");
 		}
 
 		public TorrentSession? GetSession(byte[] infoHash)

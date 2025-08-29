@@ -5,6 +5,7 @@ namespace WiseTorrent.Utilities.Types
 {
 	public static class SessionConfig
 	{
+		public static string TorrentStoragePath => "";
 		public static IPEndPoint LocalIpEndpoint => new(Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork), 6881);
 		public static int PeerTimeoutSeconds => 300;
 		public static int PeerKeepAliveIntervalSeconds => 300;

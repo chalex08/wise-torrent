@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WiseTorrent.Parsing\WiseTorrent.Parsing.csproj" />
+    <ProjectReference Include="..\WiseTorrent.Storage\WiseTorrent.Storage.csproj" />
+    <ProjectReference Include="..\WiseTorrent.Trackers\WiseTorrent.Trackers.csproj" />
     <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
   </ItemGroup>
 </Project>

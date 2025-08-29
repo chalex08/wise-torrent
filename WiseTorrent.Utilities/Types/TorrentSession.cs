@@ -4,6 +4,8 @@ namespace WiseTorrent.Utilities.Types
 {
     public class TorrentSession
     {
+	    public CancellationTokenSource Cts { get; } = new();
+
 	    public required TorrentInfo Info { get; init; }
 		public required byte[] InfoHash { get; init; }
 		public required Peer LocalPeer { get; init; }
@@ -40,5 +42,30 @@ namespace WiseTorrent.Utilities.Types
 		public SessionEvent<Block> OnBlockReceived = new();
 		public SessionEvent<Peer> OnPeerConnected = new();
 		public SessionEvent<Peer> OnPeerDisconnected = new();
+
+		public static TorrentSession CreateSessionFromMetadata(TorrentMetadata torrentMetadata)
+		{
+			var peerId = "-WTOR01-" + Guid.NewGuid().ToString("N").Substring(0, 12);
+			var info = torrentMetadata.Info;
+			var totalBytes = info.IsMultiFile
+				? info.Files!.Select(f => f.Length.ConvertUnit(ByteUnit.Byte).Size).Sum()
+				: info.Length!.ConvertUnit(ByteUnit.Byte).Size;
+			var pieceLength = info.PieceLength.ConvertUnit(ByteUnit.Byte).Size;
+			List<TorrentFile> files = info.IsMultiFile ? info.Files! : [new TorrentFile(info.Length!, [info.Name])];
+
+			return new TorrentSession
+			{
+				Info = torrentMetadata.Info,
+				InfoHash = torrentMetadata.InfoHash,
+				LocalPeer = new Peer { PeerID = peerId, IPEndPoint = SessionConfig.LocalIpEndpoint },
+				FileMap = new FileMap(pieceLength, files),
+				TotalBytes = totalBytes,
+				RemainingBytes = totalBytes,
+				CurrentEvent = EventState.Started,
+				TrackerUrls = torrentMetadata.AnnounceList?.SelectMany(urls => urls).ToList() ?? [torrentMetadata.Announce!],
+				CurrentTrackerUrlIndex = 0,
+				TrackerIntervalSeconds = 0
+			};
+		}
 	}
 }
