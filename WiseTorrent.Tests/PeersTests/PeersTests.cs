@@ -33,7 +33,7 @@ namespace WiseTorrent.Tests.PeersTests
 				PeerID = "peerABC"
 			};
 			var result = peer.ToString();
-			Assert.That(result, Is.EqualTo("10.0.0.1:1234 - ID: peerABC"));
+			Assert.That(result, Is.EqualTo("10.0.0.1:1234 - ID: peerABC - Connected: False - Score: 50.00"));
 		}
 
 		[Test]
