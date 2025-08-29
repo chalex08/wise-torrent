@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using WiseTorrent.Storage.Interfaces;
 
-namespace WiseTorrent.Storage.Types
+namespace WiseTorrent.Utilities.Types
 {
     public class FileMap
     {
