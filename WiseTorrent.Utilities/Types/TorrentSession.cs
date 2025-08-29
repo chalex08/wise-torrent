@@ -1,6 +1,4 @@
 ﻿using System.Text;
-using WiseTorrent.Pieces.Types;
-using WiseTorrent.Storage.Types;
 
 namespace WiseTorrent.Utilities.Types
 {
@@ -30,6 +28,5 @@ namespace WiseTorrent.Utilities.Types
 		public int TrackerIntervalSeconds { get; set; }
 
 		public SessionEvent<List<Peer>> OnTrackerResponse = new();
-		public SessionEvent<Piece> OnPieceReceived = new();
 	}
 }

@@ -42,7 +42,7 @@ namespace WiseTorrent.Tests.StorageTests
 
 			// Assert
 			string fileContent = File.ReadAllText(_testFilePath);
-            Assert.AreEqual("Hello, World!", fileContent, "File content should match the written data.");
+            Assert.That(fileContent, Is.EqualTo("Hello, World!"),  "File content should match the written data.");
         }
 
         [Test]
@@ -58,7 +58,7 @@ namespace WiseTorrent.Tests.StorageTests
 
             // Assert
             string readContent = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            Assert.AreEqual("Hello, World!", readContent, "Read content should match the file content.");
+            Assert.That(readContent, Is.EqualTo("Hello, World!"), "Read content should match the file content.");
         }
 
         [Test]
