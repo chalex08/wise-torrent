@@ -52,12 +52,13 @@ namespace WiseTorrent.Tests.TrackersTests
 			var host = Dns.GetHostEntry(Dns.GetHostName());
 			var ip = host.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
 			var peerId = "-PREFIX-" + Guid.NewGuid().ToString("N").Substring(0, 12);
-			
+
 			var torrentSession = new TorrentSession
 			{
 				Info = parsedMetadata.Info,
 				InfoHash = parsedMetadata.InfoHash,
 				LocalPeer = new Peer { PeerID = peerId, IPEndPoint = new IPEndPoint(ip, 6881) },
+				FileMap = new FileMap(0, []),
 				TotalBytes = totalBytes,
 				RemainingBytes = totalBytes,
 				CurrentEvent = EventState.Started,

@@ -7,6 +7,7 @@ namespace WiseTorrent.Utilities.Types
 	    public required TorrentInfo Info { get; init; }
 		public required byte[] InfoHash { get; init; }
 		public required Peer LocalPeer { get; init; }
+		public required FileMap FileMap { get; init; }
 
 		public TorrentSessionMetricsCollector Metrics { get; init; } = new();
 		public long TotalBytes { get; set; }
