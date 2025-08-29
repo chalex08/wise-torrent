@@ -127,9 +127,9 @@ namespace WiseTorrent.Trackers.Classes
 			WriteInt(transactionId);
 			WriteBytes(torrentSession.InfoHash, 20);
 			WriteBytes(torrentSession.LocalPeer.PeerIDBytes, 20);
-			WriteLong(torrentSession.DownloadedBytes);
+			WriteLong(torrentSession.Metrics.TotalDownloadedBytes);
 			WriteLong(torrentSession.RemainingBytes);
-			WriteLong(torrentSession.UploadedBytes);
+			WriteLong(torrentSession.Metrics.TotalUploadedBytes);
 			WriteInt((int)torrentSession.CurrentEvent);
 			WriteInt(0); // IP address (0 for tracker to infer)
 			WriteInt(_random.Next()); // key (random value for stats tracking)
