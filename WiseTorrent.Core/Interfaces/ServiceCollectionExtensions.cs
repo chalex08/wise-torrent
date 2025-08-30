@@ -5,11 +5,10 @@ namespace WiseTorrent.Core.Interfaces
 {
 	public static class ServiceCollectionExtensions
 	{
-		public static IServiceCollection AddCoreDependencies(this IServiceCollection services)
+		public static void AddCoreDependencies(this IServiceCollection services)
 		{
 			services.AddSingleton<ITorrentEngine, TorrentEngine>();
 			services.AddSingleton<ITorrentSessionManager, TorrentSessionManager>();
-			return services;
 		}
 	}
 

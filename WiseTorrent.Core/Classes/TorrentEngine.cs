@@ -28,13 +28,14 @@ namespace WiseTorrent.Core.Classes
 			_storageServiceTaskClient = storageServiceTaskClient;
 		}
 
-		public async Task CancelTorrentEngineSession(byte[] infoHash)
+		public async Task CancelTorrentEngineSession(string filePath)
 		{
-			var torrentSession = _torrentSessionManager.GetSession(infoHash);
+			var torrentSession = _torrentSessionManager.GetSession(filePath.Split(Path.DirectorySeparatorChar).Last());
 			if (torrentSession != null)
 			{
 				_logger.Info($"Cancelling torrent session (Torrent Name: {torrentSession.Info.Name})");
 				await torrentSession.Cts.CancelAsync();
+				_torrentSessionManager.RemoveSession(torrentSession);
 				_logger.Info($"Successfully cancelled torrent session (Torrent Name: {torrentSession.Info.Name})");
 			}
 		}
@@ -47,13 +48,13 @@ namespace WiseTorrent.Core.Classes
 			_torrentSessionManager.AddSession(torrentSession);
 			var currentSessionToken = torrentSession.Cts.Token;
 
-			StartTrackerPhase(torrentSession.Info.Name, currentSessionToken);
+			StartTrackerPhase(torrentSession, currentSessionToken);
 
 			bool downloadStarted = false;
 
-			void TrackerListener(List<Peer> peers)
+			void TrackerListener(ConcurrentSet<Peer> peers)
 			{
-				if (downloadStarted) return;
+				if (downloadStarted || !peers.Any()) return;
 				downloadStarted = true;
 
 				torrentSession.AllPeers = peers;
@@ -77,13 +78,13 @@ namespace WiseTorrent.Core.Classes
 			return session;
 		}
 
-		private void StartTrackerPhase(string torrentName, CancellationToken cToken)
+		private void StartTrackerPhase(TorrentSession torrentSession, CancellationToken cToken)
 		{
 			_ = Task.Run(async () =>
 			{
 				try
 				{
-					await _trackerServiceTaskClient.StartServiceTask(cToken);
+					await _trackerServiceTaskClient.StartServiceTask(torrentSession, cToken);
 				}
 				catch (OperationCanceledException)
 				{
@@ -94,7 +95,7 @@ namespace WiseTorrent.Core.Classes
 					_logger.Error("Tracker service task failed", ex);
 				}
 			}, cToken);
-			_logger.Info($"Tracker service task started (Torrent Name: {torrentName})");
+			_logger.Info($"Tracker service task started (Torrent Name: {torrentSession.Info.Name})");
 		}
 
 		private void StartDownloadPhase(TorrentSession torrentSession, CancellationToken cToken)

@@ -14,17 +14,23 @@ namespace WiseTorrent.Core.Classes
 			_logger = logger;
 		}
 
-		private readonly ConcurrentDictionary<byte[], TorrentSession> _sessions = new();
+		private readonly ConcurrentDictionary<string, TorrentSession> _sessions = new();
 
 		public void AddSession(TorrentSession session)
 		{
-			_sessions[session.InfoHash] = session;
+			_sessions[session.Info.Name] = session;
 			_logger.Info($"Added new torrent session (Torrent Name: {session.Info.Name})");
 		}
 
-		public TorrentSession? GetSession(byte[] infoHash)
+		public void RemoveSession(TorrentSession session)
 		{
-			return _sessions.GetValueOrDefault(infoHash);
+			_sessions.Remove(session.Info.Name, out _);
+			_logger.Info($"Removed torrent session (Torrent Name: {session.Info.Name})");
+		}
+
+		public TorrentSession? GetSession(string torrentName)
+		{
+			return _sessions.GetValueOrDefault(torrentName);
 		}
 
 		public IEnumerable<TorrentSession> AllSessions => _sessions.Values;

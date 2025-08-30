@@ -2,7 +2,7 @@
 {
 	public interface ITorrentEngine
 	{
-		Task CancelTorrentEngineSession(byte[] infoHash);
+		Task CancelTorrentEngineSession(string torrentName);
 		void StartTorrentEngineSession(string filePath);
 	}
 }

@@ -5,7 +5,8 @@ namespace WiseTorrent.Core.Interfaces
 	public interface ITorrentSessionManager
 	{
 		void AddSession(TorrentSession session);
-		TorrentSession? GetSession(byte[] infoHash);
+		void RemoveSession(TorrentSession session);
+		TorrentSession? GetSession(string torrentName);
 		IEnumerable<TorrentSession> AllSessions { get; }
 	}
 }

@@ -23,11 +23,11 @@ namespace WiseTorrent.Utilities.Types
 		public List<ServerURL> TrackerUrls { get; init; } = new();
 		public int CurrentTrackerUrlIndex { get; set; }
 		public ServerURL CurrentTrackerUrl => TrackerUrls[CurrentTrackerUrlIndex];
-		public List<Peer> AllPeers { get; set; } = new();
-		public List<Peer> ConnectedPeers { get; set; } = new();
-		public Dictionary<Peer, PeerTaskBundle> PeerTasks { get; set; } = new();
-		public Dictionary<Peer, OutboundMessageQueue> OutboundMessageQueues { get; set; } = new();
-		public List<Piece> Pieces { get; set; } = new();
+		public ConcurrentSet<Peer> AllPeers { get; set; } = new();
+		public ConcurrentSet<Peer> ConnectedPeers { get; set; } = new();
+		public ConcurrentDictionary<Peer, PeerTaskBundle> PeerTasks { get; set; } = new();
+		public ConcurrentDictionary<Peer, OutboundMessageQueue> OutboundMessageQueues { get; set; } = new();
+		public ConcurrentSet<Piece> Pieces { get; set; } = new();
 
 		public ConcurrentDictionary<int, int> PieceRequestCounts = new();
 		public ConcurrentDictionary<Peer, int> PeerRequestCounts = new();
@@ -35,7 +35,7 @@ namespace WiseTorrent.Utilities.Types
 
 		public int TrackerIntervalSeconds { get; set; }
 
-		public SessionEvent<List<Peer>> OnTrackerResponse = new();
+		public SessionEvent<ConcurrentSet<Peer>> OnTrackerResponse = new();
 		public SessionEvent<(Peer, PeerMessage)> OnPeerMessageReceived = new();
 		public SessionEvent<(Peer, Block)> OnBlockRequestReceived = new();
 		public SessionEvent<(Peer, Block)> OnBlockReadFromDisk = new();

@@ -10,7 +10,7 @@
 
 		public void NotifyListeners(T parameter)
 		{
-			foreach (var listenerAction in _listenerActions)
+			foreach (var listenerAction in _listenerActions.ToList())
 				listenerAction(parameter);
 		}
 	}

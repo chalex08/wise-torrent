@@ -8,7 +8,7 @@ namespace WiseTorrent.Peers.Interfaces
 	public interface IPeerManager
 	{
 		IPieceManager? PieceManager { get; set; }
-		Task HandleTrackerResponse(TorrentSession torrentSession, ILogger<PeerConnector> peerConnectorsLogger, CancellationToken cToken, List<Peer>? newPeers = null);
+		Task HandleTrackerResponse(TorrentSession torrentSession, ILogger<PeerConnector> peerConnectorsLogger, CancellationToken cToken, ConcurrentSet<Peer>? newPeers = null);
 		void TryQueueMessage(Peer peer, PeerMessage peerMessage);
 		Task<bool> SendPeerMessageAsync(Peer peer, byte[] data, CancellationToken cToken);
 		Task<byte[]> ReceivePeerMessageAsync(Peer peer, CancellationToken cToken);

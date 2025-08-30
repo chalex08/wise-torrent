@@ -1,7 +1,9 @@
-﻿namespace WiseTorrent.Trackers.Interfaces
+﻿using WiseTorrent.Utilities.Types;
+
+namespace WiseTorrent.Trackers.Interfaces
 {
 	public interface ITrackerServiceTaskClient
 	{
-		Task StartServiceTask(CancellationToken cToken);
+		Task StartServiceTask(TorrentSession torrentSession, CancellationToken cToken);
 	}
 }

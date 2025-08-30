@@ -6,14 +6,14 @@ namespace WiseTorrent.Peers.Interfaces
 {
 	public static class ServiceCollectionExtensions
 	{
-		public static IServiceCollection AddPeersDependencies(this IServiceCollection services)
+		public static void AddPeersDependencies(this IServiceCollection services)
 		{
 			services.AddSingleton<IPeerManager, PeerManager>();
 			services.AddSingleton<IPeerChildServiceTaskClient, ReceiveServiceTaskClient>();
 			services.AddSingleton<IPeerChildServiceTaskClient, SendServiceTaskClient>();
 			services.AddSingleton<IPeerChildServiceTaskClient, KeepAliveServiceTaskClient>();
 			services.AddSingleton<IPeerSiblingServiceTaskClient, UpdateStateServiceTaskClient>();
-			return services;
+			services.AddSingleton<IPeerServiceTaskClient, PeerServiceTaskClient>();
 		}
 	}
 }

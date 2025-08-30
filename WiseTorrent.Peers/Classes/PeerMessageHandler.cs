@@ -27,7 +27,7 @@ namespace WiseTorrent.Peers.Classes
 			switch (message.MessageType)
 			{
 				case PeerMessageType.Bitfield:
-					_logger.Info($"(Peer: {peer.PeerID}) Received bitfield from peer");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received bitfield from peer");
 					HandleBitfield(peer, message);
 					break;
 
@@ -37,23 +37,23 @@ namespace WiseTorrent.Peers.Classes
 
 				case PeerMessageType.Choke:
 					peer.IsChoked = true;
-					_logger.Info($"(Peer: {peer.PeerID}) Choked by peer");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Choked by peer");
 					break;
 
 				case PeerMessageType.Unchoke:
 					peer.IsChoked = false;
-					_logger.Info($"(Peer: {peer.PeerID}) Unchoked by peer. Queuing piece requests");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Unchoked by peer. Queuing piece requests");
 					_peerManager.QueuePieceRequests(peer, token);
 					break;
 
 				case PeerMessageType.Interested:
 					peer.IsInterested = true;
-					_logger.Info($"(Peer: {peer.PeerID}) Set to interested by peer");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Set to interested by peer");
 					break;
 
 				case PeerMessageType.NotInterested:
 					peer.IsInterested = false;
-					_logger.Info($"(Peer: {peer.PeerID}) Set to not interested by peer");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Set to not interested by peer");
 					break;
 
 				case PeerMessageType.Request:
@@ -68,18 +68,18 @@ namespace WiseTorrent.Peers.Classes
 
 				case PeerMessageType.KeepAlive:
 					peer.LastActive = DateTime.UtcNow;
-					_logger.Info($"(Peer: {peer.PeerID}) Received keep-alive from peer");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received keep-alive from peer");
 					break;
 				default:
 					if (message.HandshakeMessage != null)
 					{
-						_logger.Info($"(Peer: {peer.PeerID}) Received handshake from peer");
+						_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received handshake from peer");
 						if (TryHandleHandshake(peer, message))
 							SendBitfield(peer, message);
 					}
 					else
 					{
-						_logger.Warn($"Unknown message type from {peer.PeerID}: {message.MessageType}");
+						_logger.Warn($"Unknown message type from {peer.PeerID ?? peer.IPEndPoint.ToString()}: {message.MessageType}");
 					}
 
 					break;
@@ -123,14 +123,14 @@ namespace WiseTorrent.Peers.Classes
 		{
 			if (message.Payload.Length != 4)
 			{
-				_logger.Warn($"Invalid HAVE message length from peer {peer.PeerID}");
+				_logger.Warn($"Invalid HAVE message length from peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
 				return;
 			}
 
 			int pieceIndex = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(message.Payload, 0));
 			if (pieceIndex < 0 || pieceIndex >= _torrentSession.Info.PieceHashes.Length)
 			{
-				_logger.Warn($"Received HAVE for out-of-range piece {pieceIndex} from peer {peer.PeerID}");
+				_logger.Warn($"Received HAVE for out-of-range piece {pieceIndex} from peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
 				return;
 			}
 
@@ -141,7 +141,7 @@ namespace WiseTorrent.Peers.Classes
 			_pieceManager.UpdatePieceRarityFromPeer(peer.AvailablePieces);
 			if (peer.ProtocolStage == PeerProtocolStage.AwaitingHaveOrRequest)
 				peer.ProtocolStage = PeerProtocolStage.AwaitingPiece;
-			_logger.Info($"(Peer: {peer.PeerID}) Received have message from peer, about Piece: {pieceIndex}");
+			_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received have message from peer, about Piece: {pieceIndex}");
 		}
 
 		private bool TryHandleHandshake(Peer peer, PeerMessage message)
@@ -156,9 +156,10 @@ namespace WiseTorrent.Peers.Classes
 			peer.IsConnected = true;
 			peer.HandshakeCompleted = true;
 			peer.ProtocolStage = PeerProtocolStage.AwaitingBitfield;
+			_torrentSession.ConnectedPeers.Add(peer);
 
 			_torrentSession.OnPeerConnected.NotifyListeners(peer);
-			_logger.Info($"Handshake successful. Peer now connected (PeerID: {peer.PeerID})");
+			_logger.Info($"Handshake successful. Peer now connected (PeerID: {peer.PeerID ?? peer.IPEndPoint.ToString()})");
 			return true;
 		}
 
@@ -167,7 +168,7 @@ namespace WiseTorrent.Peers.Classes
 			var bitfieldPayload = peer.BuildBitfield(_torrentSession.Info.PieceHashes.Length);
 			var bitfieldMessage = new PeerMessage(PeerMessageType.Bitfield, bitfieldPayload);
 			_peerManager.TryQueueMessage(peer, bitfieldMessage);
-			_logger.Info($"(Peer: {peer.PeerID}) Queued bitfield message to peer");
+			_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Queued bitfield message to peer");
 		}
 
 		private void HandleRequest(Peer peer, PeerMessage message, CancellationToken cToken)
@@ -178,7 +179,7 @@ namespace WiseTorrent.Peers.Classes
 			_torrentSession.OnBlockRequestReceived.NotifyListeners((peer, parsedBlock));
 			if (peer.ProtocolStage == PeerProtocolStage.AwaitingHaveOrRequest)
 				peer.ProtocolStage = PeerProtocolStage.AwaitingPiece;
-			_logger.Info($"(Peer: {peer.PeerID}) Received request from peer, about (Piece Index, Block Offset): ({parsedBlock.PieceIndex}, {parsedBlock.Offset})");
+			_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received request from peer, about (Piece Index, Block Offset): ({parsedBlock.PieceIndex}, {parsedBlock.Offset})");
 		}
 
 		bool IsValidRequest(Block req)
@@ -218,7 +219,7 @@ namespace WiseTorrent.Peers.Classes
 					if (piece.State) _torrentSession.OnBlockReceived.NotifyListeners(parsedBlock);
 
 					_pieceManager.MarkPieceComplete(parsedBlock.PieceIndex);
-					_logger.Info($"(Peer: {peer.PeerID}) Received piece from peer, about (Piece Index, Block Offset): ({parsedBlock.PieceIndex}, {parsedBlock.Offset})");
+					_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received piece from peer, about (Piece Index, Block Offset): ({parsedBlock.PieceIndex}, {parsedBlock.Offset})");
 
 					if (piece.IsPieceComplete())
 					{

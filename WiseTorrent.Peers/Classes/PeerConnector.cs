@@ -10,7 +10,7 @@ namespace WiseTorrent.Peers.Classes
 		{
 			Peer = peer;
 			TorrentSession = torrentSession;
-			Client = new TcpClient(SessionConfig.LocalIpEndpoint);
+			Client = new TcpClient();
 			_logger = logger;
 		}
 
@@ -25,12 +25,12 @@ namespace WiseTorrent.Peers.Classes
 		{
 			try
 			{
-				_logger.Info($"Attempting connection (PeerID: {Peer.PeerID})");
+				_logger.Info($"Attempting connection (PeerID: {Peer.PeerID ?? Peer.IPEndPoint.ToString()})");
 				await Client.ConnectAsync(Peer.IPEndPoint.Address, Peer.IPEndPoint.Port, token);
 				_stream = Client.GetStream();
 
-				_logger.Info($"Connection successful. Attempting handshake (PeerID: {Peer.PeerID})");
-				var handshake = new PeerMessage(new HandshakeMessage(TorrentSession.InfoHash, TorrentSession.LocalPeer.PeerID!));
+				_logger.Info($"Connection successful. Attempting handshake (PeerID: {Peer.PeerID ?? Peer.IPEndPoint.ToString()})");
+				var handshake = new PeerMessage(new HandshakeMessage(TorrentSession.InfoHash, Peer.PeerID!));
 				TorrentSession.OutboundMessageQueues[Peer].TryEnqueue(handshake);
 				Peer.ProtocolStage = PeerProtocolStage.AwaitingHandshake;
 			}
@@ -92,13 +92,14 @@ namespace WiseTorrent.Peers.Classes
 
 				Peer.IsConnected = false;
 				Peer.LastActive = DateTime.UtcNow;
-				var peerTasks = TorrentSession.PeerTasks[Peer];
+				TorrentSession.PeerTasks.TryRemove(Peer, out var peerTasks);
+				if (peerTasks == null) return;
+
 				await peerTasks.CTS.CancelAsync();
 				await Task.WhenAll(peerTasks.Tasks);
-				TorrentSession.PeerTasks.Remove(Peer);
 				peerTasks.CTS.Dispose();
 
-				_logger.Info($"Disconnected from peer {Peer.PeerID}, and stopped all child service tasks");
+				_logger.Info($"Disconnected from peer {Peer.PeerID ?? Peer.IPEndPoint.ToString()}, and stopped all child service tasks");
 			}
 			catch (Exception ex)
 			{
