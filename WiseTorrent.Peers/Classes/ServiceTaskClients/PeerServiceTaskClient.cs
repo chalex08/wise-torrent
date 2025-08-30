@@ -118,6 +118,12 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		{
 			foreach (var peer in torrentSession.AllPeers)
 			{
+				if (torrentSession.PeerTasks.ContainsKey(peer))
+				{
+					_logger.Info($"[CreatePeerTaskBundles] Skipping duplicate task creation for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
+					continue;
+				}
+
 				var clientIterator = 0;
 				var peerCTS = new CancellationTokenSource();
 				var bundle = new PeerTaskBundle(
@@ -177,10 +183,11 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				await semaphore.WaitAsync();
 				try
 				{
+					var taskId = Guid.NewGuid().ToString("N").Substring(0, 8);
 					var peerLabel = peer == null
 						? "s"
 						: " " + (peer.PeerID ?? peer.IPEndPoint.ToString());
-					_logger.Info($"[SafeRun] Starting {taskName} for peer{peerLabel}");
+					_logger.Info($"[SafeRun] Starting {taskName} for peer{peerLabel} [Task {taskId}]");
 					await taskFunc();
 					_logger.Info($"[SafeRun] Finished {taskName} for peer{peerLabel}");
 				}
