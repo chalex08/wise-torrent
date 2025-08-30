@@ -1,8 +1,8 @@
 ﻿using WiseTorrent.Utilities.Types;
 
-namespace WiseTorrent.Trackers.Interfaces
+namespace WiseTorrent.Storage.Interfaces
 {
-	public interface ITrackerServiceTaskClient
+	public interface IStorageServiceTaskClient
 	{
 		Task StartServiceTask(TorrentSession torrentSession, CancellationToken cToken);
 	}

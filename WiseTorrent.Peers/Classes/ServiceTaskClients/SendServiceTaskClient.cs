@@ -28,6 +28,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 					if (message == null) continue;
 
 					var bytes = message.ToBytes();
+					_logger.Info($"Sending {(message.HandshakeMessage == null ? message.MessageType : "Handshake")} to peer (Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()})");
 					await PeerManager.SendPeerMessageAsync(peer, bytes, pCToken);
 
 					peer.LastActive = DateTime.UtcNow;
@@ -35,11 +36,11 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			}
 			catch (OperationCanceledException)
 			{
-				_logger.Info($"Send loop cancelled for peer {peer.PeerID}");
+				_logger.Info($"Send loop cancelled for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
 			}
 			catch (Exception ex)
 			{
-				_logger.Warn($"Send loop error for peer {peer.PeerID}: {ex.Message}");
+				_logger.Warn($"Send loop error for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}: {ex.Message}");
 			}
 
 		}

@@ -36,8 +36,8 @@ namespace WiseTorrent.Utilities.Types
 			InfoHash.CopyTo(handshake, 28);
 
 			// peer_id (20 bytes)
-			byte[] peerIdBytes = Encoding.ASCII.GetBytes(PeerId);
-			if (peerIdBytes.Length != 20)
+			byte[] peerIdBytes = Encoding.ASCII.GetBytes(PeerId ?? "");
+			if (peerIdBytes.Length != 20 && PeerId != null)
 				throw new ArgumentException("PeerID must be 20 bytes.");
 
 			peerIdBytes.CopyTo(handshake, 48);

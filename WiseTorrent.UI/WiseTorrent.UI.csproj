@@ -20,6 +20,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
+		<ProjectReference Include="..\WiseTorrent.Core\WiseTorrent.Core.csproj" />
 		<ProjectReference Include="..\WiseTorrent.Parsing\WiseTorrent.Parsing.csproj" />
 		<ProjectReference Include="..\WiseTorrent.Peers\WiseTorrent.Peers.csproj" />
 		<ProjectReference Include="..\WiseTorrent.Pieces\WiseTorrent.Pieces.csproj" />

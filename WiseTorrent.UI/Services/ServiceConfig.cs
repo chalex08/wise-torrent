@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using WiseTorrent.Core.Interfaces;
 using WiseTorrent.Parsing.Interfaces;
 using WiseTorrent.Peers.Interfaces;
 using WiseTorrent.Pieces.Interfaces;
 using WiseTorrent.Storage.Interfaces;
 using WiseTorrent.Trackers.Interfaces;
-using WiseTorrent.Utilities.Classes;
 using WiseTorrent.Utilities.Interfaces;
 
 namespace WiseTorrent.UI.Services
@@ -14,6 +14,7 @@ namespace WiseTorrent.UI.Services
 		public static void ConfigureServices(IServiceCollection services)
 		{
 			services.AddUtilityDependencies();
+			services.AddCoreDependencies();
 			services.AddParsingDependencies();
 			services.AddPeersDependencies();
 			services.AddPiecesDependencies();

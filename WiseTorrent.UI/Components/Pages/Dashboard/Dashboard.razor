@@ -1,6 +1,55 @@
 ﻿@page "/"
+@namespace WiseTorrent.UI.Components.Pages.Dashboard
+@using WiseTorrent.Core.Interfaces
+@using WiseTorrent.UI.Services
+
+@inject UIStateService UIStateService
+@inject IFilePickerService FilePickerService
+@inject ITorrentEngine TorrentEngine
+
 <PageTitle>Dashboard</PageTitle>
 
 <h1>Dashboard</h1>
 
-@namespace WiseTorrent.UI.Components.Pages.Dashboard
+<button @onclick="SelectTorrentFile">Select Torrent File</button>
+<button @onclick="StartDownload" disabled="@string.IsNullOrEmpty(selectedFile)">Start Download</button>
+<button @onclick="StopDownload" disabled="@(!downloadStarted)">Stop Download</button>
+
+<span>Selected: @selectedFile</span>
+
+@code {
+	private string? selectedFile;
+	private bool downloadStarted;
+
+	protected override async Task OnInitializedAsync()
+	{
+		if (UIStateService.SelectedFile != null)
+		{
+			selectedFile = UIStateService.SelectedFile;
+			downloadStarted = UIStateService.DownloadStarted;
+		}
+		await Task.CompletedTask;
+	}
+
+	private void SelectTorrentFile()
+	{
+		selectedFile = FilePickerService.PickFile();
+		UIStateService.SelectedFile = selectedFile;
+	}
+
+	private void StartDownload()
+	{
+		if (string.IsNullOrEmpty(selectedFile)) return;
+		downloadStarted = true;
+		UIStateService.DownloadStarted = true;
+		TorrentEngine.StartTorrentEngineSession(selectedFile);
+	}
+
+	private void StopDownload()
+	{
+		if (!downloadStarted || string.IsNullOrEmpty(selectedFile)) return;
+		downloadStarted = false;
+		UIStateService.DownloadStarted = false;
+		TorrentEngine.CancelTorrentEngineSession(selectedFile);
+	}
+}

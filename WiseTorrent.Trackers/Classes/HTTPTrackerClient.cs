@@ -1,4 +1,5 @@
-﻿using System.Web;
+﻿using System.Net;
+using System.Web;
 using WiseTorrent.Parsing.Interfaces;
 using WiseTorrent.Trackers.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
@@ -15,18 +16,6 @@ namespace WiseTorrent.Trackers.Classes
 		{
 			_responseParser = responseParser;
 			_logger = logger;
-		}
-
-		private string BuildTrackerURL(TorrentSession torrentSession)
-		{
-			return torrentSession.CurrentTrackerUrl.Url
-				+ "?info_hash=" + HttpUtility.UrlEncode(torrentSession.InfoHash)
-				+ "&peer_id=" + HttpUtility.UrlEncode(torrentSession.LocalPeer.PeerIDBytes)
-				+ "&port=" + torrentSession.LocalPeer.IPEndPoint.Port
-				+ "&uploaded=" + torrentSession.Metrics.TotalUploadedBytes
-				+ "&downloaded=" + torrentSession.Metrics.TotalUploadedBytes
-				+ "&left=" + torrentSession.RemainingBytes
-				+ (torrentSession.CurrentEvent != EventState.None ? "&event=" + torrentSession.CurrentEvent.ToURLString() : String.Empty);
 		}
 
 		public async Task<bool> RunServiceTask(TorrentSession torrentSession, CancellationToken cToken)
@@ -55,7 +44,10 @@ namespace WiseTorrent.Trackers.Classes
 						}
 
 						_logger.Info("Peer list received, notifying listeners");
-						torrentSession.OnTrackerResponse.NotifyListeners(parsedResponse.Peers!);
+						var externalIp = await GetExternalIpAddressAsync(client);
+						var newPeers = new ConcurrentSet<Peer>();
+						newPeers.AddRange(parsedResponse.Peers!.Where(p => p.PeerID != torrentSession.LocalPeer.PeerID && !p.IPEndPoint.Address.Equals(externalIp)));
+						torrentSession.OnTrackerResponse.NotifyListeners(newPeers);
 						torrentSession.LeecherCount = (int)parsedResponse.Incomplete!;
 						torrentSession.SeederCount = (int)parsedResponse.Complete!;
 					}
@@ -82,5 +74,33 @@ namespace WiseTorrent.Trackers.Classes
 
 			return shouldRotateTracker;
 		}
+
+		private string BuildTrackerURL(TorrentSession torrentSession)
+		{
+			return torrentSession.CurrentTrackerUrl.Url
+				+ "?info_hash=" + HttpUtility.UrlEncode(torrentSession.InfoHash)
+				+ "&peer_id=" + HttpUtility.UrlEncode(torrentSession.LocalPeer.PeerIDBytes)
+				+ "&port=" + torrentSession.LocalPeer.IPEndPoint.Port
+				+ "&uploaded=" + torrentSession.Metrics.TotalUploadedBytes
+				+ "&downloaded=" + torrentSession.Metrics.TotalUploadedBytes
+				+ "&left=" + torrentSession.RemainingBytes
+				+ (torrentSession.CurrentEvent != EventState.None ? "&event=" + torrentSession.CurrentEvent.ToURLString() : String.Empty);
+		}
+
+		private async Task<IPAddress?> GetExternalIpAddressAsync(HttpClient client)
+		{
+			try
+			{
+				var ipString = await client.GetStringAsync("https://api.ipify.org");
+				ipString = ipString.Trim();
+
+				return IPAddress.TryParse(ipString, out var ip) ? ip : null;
+			}
+			catch
+			{
+				return null;
+			}
+		}
+
 	}
 }

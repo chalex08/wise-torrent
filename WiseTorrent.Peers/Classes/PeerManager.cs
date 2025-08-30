@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Net.WebSockets;
 using WiseTorrent.Peers.Interfaces;
 using WiseTorrent.Pieces.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
@@ -20,7 +21,7 @@ namespace WiseTorrent.Peers.Classes
 			_logger = logger;
 		}
 
-		public async Task HandleTrackerResponse(TorrentSession torrentSession, ILogger<PeerConnector> peerConnectorsLogger, CancellationToken cToken, List<Peer>? newPeers = null)
+		public async Task HandleTrackerResponse(TorrentSession torrentSession, ILogger<PeerConnector> peerConnectorsLogger, CancellationToken cToken, ConcurrentSet<Peer>? newPeers = null)
 		{
 			if (torrentSession.AllPeers.Count == 0) return;
 			
@@ -36,20 +37,27 @@ namespace WiseTorrent.Peers.Classes
 			else
 			{
 				_torrentSession = torrentSession;
-				foreach (var peer in torrentSession.AllPeers)
+				var peerList = torrentSession.AllPeers.ToList();
+				foreach (var peer in peerList)
 				{
 					if (!_peerConnectors.ContainsKey(peer))
 						_peerConnectors[peer] = new PeerConnector(peer, torrentSession, peerConnectorsLogger);
 				}
 
-				await ConnectToAllPeersAsync(torrentSession.AllPeers, cToken);
+				await ConnectToAllPeersAsync(peerList, cToken);
 			}
 		}
 
-		private async Task ConnectToAllPeersAsync(List<Peer> peers, CancellationToken cToken)
+		private async Task ConnectToAllPeersAsync(IEnumerable<Peer> peers, CancellationToken cToken)
 		{
-			var tasks = peers.Take(SessionConfig.MaxSwarmSize - _torrentSession!.ConnectedPeers.Count).Select(peer => ConnectToPeerAsync(peer, cToken)) ?? [];
+
+			var peerList = peers.ToList();
+			var tasks = peerList
+				.Take(SessionConfig.MaxSwarmSize - _torrentSession!.ConnectedPeers.Count)
+				.Select(peer => ConnectToPeerAsync(peer, cToken));
+
 			await Task.WhenAll(tasks);
+
 		}
 
 		private async Task ConnectToPeerAsync(Peer peer, CancellationToken cToken)
@@ -60,12 +68,10 @@ namespace WiseTorrent.Peers.Classes
 				_torrentSession!.OutboundMessageQueues[peer] = new();
 				await _peerConnectors[peer].InitiateHandshakeAsync(cToken);
 				peer.ResetDecay();
-				_torrentSession.ConnectedPeers.Add(peer);
-				_torrentSession.OnPeerConnected.NotifyListeners(peer);
 			}
 			catch (OperationCanceledException)
 			{
-				_logger.Info($"Connection to {peer.PeerID} was cancelled.");
+				_logger.Info($"Connection to {peer.PeerID ?? peer.IPEndPoint.ToString()} was cancelled.");
 			}
 			finally
 			{
@@ -78,7 +84,7 @@ namespace WiseTorrent.Peers.Classes
 		{
 			if (!_torrentSession!.OutboundMessageQueues[peer].TryEnqueue(message))
 			{
-				_logger.Error($"Queuing of {message.MessageType} message to {peer.PeerID} failed");
+				_logger.Error($"Queuing of {message.MessageType} message to {peer.PeerID ?? peer.IPEndPoint.ToString()} failed");
 			}
 		}
 
@@ -90,7 +96,7 @@ namespace WiseTorrent.Peers.Classes
 			}
 			catch (OperationCanceledException)
 			{
-				_logger.Info($"Sending message to {peer.PeerID} was cancelled.");
+				_logger.Info($"Sending message to {peer.PeerID ?? peer.IPEndPoint.ToString()} was cancelled.");
 				return false;
 			}
 		}
@@ -103,7 +109,7 @@ namespace WiseTorrent.Peers.Classes
 			}
 			catch (OperationCanceledException)
 			{
-				_logger.Info($"Receiving message from {peer.PeerID} was cancelled.");
+				_logger.Info($"Receiving message from {peer.PeerID ?? peer.IPEndPoint.ToString()} was cancelled.");
 				return [];
 			}
 		}
@@ -146,7 +152,7 @@ namespace WiseTorrent.Peers.Classes
 				}
 
 				if (blocksRequested > 0)
-					_logger.Info($"Queued {blocksRequested} piece requests for missing blocks in Piece: {pieceIndex} (Peer: {peer.PeerID})");
+					_logger.Info($"Queued {blocksRequested} piece requests for missing blocks in Piece: {pieceIndex} (Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()})");
 			}
 		}
 
@@ -235,17 +241,17 @@ namespace WiseTorrent.Peers.Classes
 				if (score >= 80)
 				{
 					UnchokePeer(peer);
-					_logger.Info($"Peer {peer.PeerID} unchoked (Performance score: {score})");
+					_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} unchoked (Performance score: {score})");
 				}
 				else if (score >= 40)
 				{
 					MonitorPeer(peer);
-					_logger.Info($"Peer {peer.PeerID} choked, but monitored (Performance score: {score})");
+					_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} choked, but monitored (Performance score: {score})");
 				}
 				else
 				{
 					await RotatePeer(peer, cToken);
-					_logger.Info($"Peer {peer.PeerID} replaced (Performance score: {score})");
+					_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} replaced (Performance score: {score})");
 				}
 			}
 		}
@@ -265,7 +271,7 @@ namespace WiseTorrent.Peers.Classes
 		private async Task RotatePeer(Peer peer, CancellationToken cToken)
 		{
 			await DisconnectPeerAsync(peer, cToken);
-			_logger.Info($"Peer {peer.PeerID} disconnected due to inactivity");
+			_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} disconnected due to inactivity");
 
 			await ConnectNextBestPeer(cToken);
 		}
@@ -280,7 +286,7 @@ namespace WiseTorrent.Peers.Classes
 			if (replacementPeer != null)
 			{
 				await ConnectToPeerAsync(replacementPeer, cToken);
-				_logger.Info($"Peer {replacementPeer.PeerID} connected to replace under performing peer");
+				_logger.Info($"Peer {replacementPeer.PeerID ?? replacementPeer.IPEndPoint.ToString()} connected to replace under performing peer");
 			}
 		}
 

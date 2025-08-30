@@ -11,7 +11,7 @@
 
 	<main class="console-body">
 		<div id="logViewer" class="log-viewer" @ref="logContainer">
-			@foreach (var entry in logs)
+			@foreach (var entry in logsSnapshot)
 			{
 				<div id="message" style="margin: 0; padding: 0; line-height: 1.2; color:@GetColor(entry.Level);">
 					<b>[@entry.Timestamp] [@entry.Level] [@entry.ClassName]</b> @entry.Message
@@ -101,6 +101,7 @@
 
 @code {
 	private List<LogEntry> logs = new();
+	private IReadOnlyList<LogEntry> logsSnapshot = Array.Empty<LogEntry>();
 	private ElementReference logContainer;
 	private bool shouldScroll = false;
 	private bool _subscribed = false;
@@ -108,6 +109,7 @@
 	private void HandleLog(LogEntry entry)
 	{
 		logs.Add(entry);
+		logsSnapshot = logs.ToList();
 		shouldScroll = true;
 		InvokeAsync(StateHasChanged);
 	}

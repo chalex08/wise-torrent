@@ -15,4 +15,9 @@
     <ProjectReference Include="..\WiseTorrent.Utilities\WiseTorrent.Utilities.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>WiseTorrent.Tests</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
 </Project>

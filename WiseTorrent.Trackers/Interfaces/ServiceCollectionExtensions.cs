@@ -7,7 +7,7 @@ namespace WiseTorrent.Trackers.Interfaces
 {
 	public static class ServiceCollectionExtensions
 	{
-		public static IServiceCollection AddTrackersDependencies(this IServiceCollection services)
+		public static void AddTrackersDependencies(this IServiceCollection services)
 		{
 			services.AddSingleton<HTTPTrackerClient>();
 			services.AddSingleton<UDPTrackerClient>();
@@ -22,14 +22,7 @@ namespace WiseTorrent.Trackers.Interfaces
 					_ => throw new ArgumentException($"Unknown parser type: {key}")
 				};
 			});
-			services.AddTransient<Func<TorrentSession, TrackerServiceTaskClient>>(sp => session =>
-			{
-				var logger = sp.GetRequiredService<ILogger<TrackerServiceTaskClient>>();
-				var clientFactory = sp.GetRequiredService<Func<PeerDiscoveryProtocol, ITrackerClient>>();
-				return new TrackerServiceTaskClient(logger, clientFactory, session);
-			});
-
-			return services;
+			services.AddTransient<ITrackerServiceTaskClient, TrackerServiceTaskClient>();
 		}
 	}
 }
