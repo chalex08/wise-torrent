@@ -1,6 +1,8 @@
 ﻿@using WiseTorrent.UI.Services
+@using WiseTorrent.UI.Components.Notification
 @inherits LayoutComponentBase
 @inject FullscreenStateService FullscreenService
+@inject NotificationService NotificationService
 
 <div class="page">
 	<div class="sidebar">
@@ -22,6 +24,9 @@
 		</article>
 	</main>
 </div>
+
+@* This is a top level element that renders any notifications on any page *@
+<Notification />
 
 @code {
 	private string FullscreenIconClass =>

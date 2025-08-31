@@ -1,0 +1,51 @@
+﻿@inject NotificationService NotificationService
+
+<div class="notification-container">
+    @if (!string.IsNullOrEmpty(CurrentMessage))
+    {
+        <div class="alert @AlertClass alert-dismissible fade show" role="alert">
+            @CurrentMessage
+            <button type="button" class="btn-close" @onclick="HideNotification"></button>
+        </div>
+    }
+</div>
+
+@code {
+    private string? CurrentMessage;
+    private NotificationType CurrentType;
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnNotify += ShowNotification;
+    }
+
+    void ShowNotification(string message, NotificationType type)
+    {
+        CurrentMessage = message;
+        CurrentType = type;
+        StateHasChanged();
+
+        _ = HideAfterDelay();
+    }
+
+    async Task HideAfterDelay()
+    {
+        await Task.Delay(3000);
+        HideNotification();
+    }
+
+    void HideNotification()
+    {
+        CurrentMessage = null;
+        StateHasChanged();
+    }
+
+    private string AlertClass => CurrentType switch
+    {
+        NotificationType.Success => "alert-success",
+        NotificationType.Warning => "alert-warning",
+        NotificationType.Error => "alert-danger",
+        NotificationType.Info => "alert-info",
+        _ => "alert-secondary"
+    };
+}
