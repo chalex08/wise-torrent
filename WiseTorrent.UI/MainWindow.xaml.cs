@@ -30,9 +30,6 @@ public partial class MainWindow : Window
 	[DllImport("user32.dll")]
 	private static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
 
-	private const int WM_NCLBUTTONDOWN = 0xA1;
-	private const int HTCAPTION = 0x2;
-
 	public MainWindow()
 	{
 		InitializeComponent();
@@ -74,6 +71,6 @@ public partial class MainWindow : Window
 	{
 		var hwnd = new WindowInteropHelper(this).Handle;
 		ReleaseCapture();
-		SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+		SendMessage(hwnd, 0xA1, 0x2, 0);
 	}
 }
