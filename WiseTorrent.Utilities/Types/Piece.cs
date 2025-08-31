@@ -19,7 +19,7 @@ namespace WiseTorrent.Utilities.Types
 			Index = index;
 			ExpectedHash = expectedHash;
 			State = false;
-			Blocks = SplitPieceToBlocks(index, pieceLength);
+			Blocks = SplitPieceToBlocks(index, pieceLength).ToList();
 		}
 
 		public static IEnumerable<Block> SplitPieceToBlocks(int pieceIndex, int pieceLength)
@@ -31,30 +31,33 @@ namespace WiseTorrent.Utilities.Types
 			}
 		}
 
-		private bool IsValid()
+		private bool IsPieceValid()
 		{
 			if (Blocks.Any(b => b.Data == null)) return false;
-			return SHA1.HashData((byte[])Blocks.SelectMany(b => b.Data!)).SequenceEqual(ExpectedHash);
+			var assembled = Blocks.SelectMany(b => b.Data!).ToArray();
+			return SHA1.HashData(assembled).SequenceEqual(ExpectedHash);
 		}
 
-		public void Validate()
+		public bool IsBlockValid(Block block)
 		{
-			if (Blocks.Any(b => b.Data == null))
-			{
-				State = false;
-				return;
-			}
+			if (block.PieceIndex != Index)
+				return false;
 
-			LastValidationTime = DateTime.UtcNow;
-			State = IsValid();
+			var expected = Blocks.FirstOrDefault(b => b.Offset == block.Offset && b.Length == block.Length);
+			if (expected == null)
+				return false;
 
-			if (!State)
-				ValidationFailures++;
+			return block.Data != null && block.Data.Length == block.Length;
 		}
 
 		public bool IsPieceComplete()
 		{
-			return Blocks.All(b => b.Data != null);
+			return IsPieceValid();
+		}
+
+		public static bool ArePiecesEqual(Piece piece1, Piece piece2)
+		{
+			return piece1.Index == piece2.Index && piece1.Length == piece2.Length && piece1.ExpectedHash.SequenceEqual(piece2.ExpectedHash);
 		}
 	}
 }

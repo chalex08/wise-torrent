@@ -5,7 +5,7 @@ namespace WiseTorrent.Utilities.Classes
 {
 	internal class LogService : ILogService
 	{
-		private readonly List<Action<LogEntry>> _listenerActions = new();
+		private readonly ConcurrentSet<Action<LogEntry>> _listenerActions = new();
 
 		public LogService()
 		{

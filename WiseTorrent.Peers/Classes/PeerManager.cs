@@ -4,6 +4,7 @@ using WiseTorrent.Peers.Interfaces;
 using WiseTorrent.Pieces.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace WiseTorrent.Peers.Classes
 {
@@ -48,7 +49,7 @@ namespace WiseTorrent.Peers.Classes
 			}
 		}
 
-		private async Task ConnectToAllPeersAsync(IEnumerable<Peer> peers, CancellationToken cToken)
+		public async Task ConnectToAllPeersAsync(IEnumerable<Peer> peers, CancellationToken cToken)
 		{
 
 			var peerList = peers.ToList();
@@ -68,6 +69,7 @@ namespace WiseTorrent.Peers.Classes
 				_torrentSession!.OutboundMessageQueues[peer] = new();
 				await _peerConnectors[peer].InitiateHandshakeAsync(cToken);
 				peer.ResetDecay();
+				peer.LastConnectAttempt = DateTime.UtcNow;
 			}
 			catch (OperationCanceledException)
 			{
@@ -101,6 +103,19 @@ namespace WiseTorrent.Peers.Classes
 			}
 		}
 
+		public async Task<byte[]> ReceiveHandshakeAsync(Peer peer, CancellationToken cToken)
+		{
+			try
+			{
+				return await _peerConnectors[peer].ReceiveHandshakeAsync(cToken);
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.Info($"Receiving handshake from {peer.PeerID ?? peer.IPEndPoint.ToString()} was cancelled.");
+				return [];
+			}
+		}
+
 		public async Task<byte[]> ReceivePeerMessageAsync(Peer peer, CancellationToken cToken)
 		{
 			try
@@ -117,8 +132,6 @@ namespace WiseTorrent.Peers.Classes
 		public void QueuePieceRequests(Peer peer, CancellationToken token)
 		{
 			if (_torrentSession == null || PieceManager == null) return;
-			if (_torrentSession.PeerRequestCounts[peer] >= SessionConfig.MaxRequestsPerPeer)
-				return;
 
 			var missingPieces = PieceManager.GetMissingPieces();
 			var availablePieces = peer.AvailablePieces;
@@ -129,7 +142,7 @@ namespace WiseTorrent.Peers.Classes
 				.Where(p => _torrentSession.PieceRequestCounts.GetValueOrDefault(p, 0) < SessionConfig.MaxRequestsPerPiece)
 				.Take(SessionConfig.MaxActivePieces);
 
-			var pending = _torrentSession.PendingRequests.GetOrAdd(peer, _ => new ConcurrentBag<Block>());
+			var pending = _torrentSession.PendingRequests.GetOrAdd(peer, _ => new ConcurrentDictionary<Block, DateTime>());
 			foreach (var pieceIndex in sortedPieces)
 			{
 				var blocksRequested = 0;
@@ -142,13 +155,23 @@ namespace WiseTorrent.Peers.Classes
 					if (_torrentSession.PeerRequestCounts[peer] >= SessionConfig.MaxRequestsPerPeer)
 						break;
 
-					if (pending.Contains(block)) continue;
-					
+					if (pending.TryGetValue(block, out var timestamp))
+					{
+						if (block.IsMarkedForRetry)
+						{
+							block.IsMarkedForRetry = false;
+							pending[block] = DateTime.UtcNow; // update timestamp
+						}
+						continue;
+					}
+
+					// new request
 					TryQueueMessage(peer, PeerMessage.CreateRequestMessage(block));
-					_torrentSession.PieceRequestCounts[pieceIndex]++;
-					_torrentSession.PeerRequestCounts[peer]++;
-					pending.Add(block);
+					_torrentSession.PieceRequestCounts.AddOrUpdate(pieceIndex, 0, (k, v) => v + 1);
+					_torrentSession.PeerRequestCounts.AddOrUpdate(peer, 0, (k, v) => v + 1);
+					pending.TryAdd(block, DateTime.UtcNow);
 					blocksRequested++;
+
 				}
 
 				if (blocksRequested > 0)
@@ -162,16 +185,16 @@ namespace WiseTorrent.Peers.Classes
 
 			int pieceLengthBytes = (int)_torrentSession.Info.PieceLength.ConvertUnit(ByteUnit.Byte).Size;
 			long totalSize = _torrentSession.TotalBytes;
-			int pieceCount = (int)Math.Ceiling((double)totalSize / pieceLengthBytes);
+			int pieceCount = _torrentSession.Info.PieceHashes.Length;
 
 			if (index < 0 || index >= pieceCount)
-				throw new ArgumentOutOfRangeException(nameof(index), "Invalid piece index.");
+				throw new ArgumentOutOfRangeException(nameof(index), $"Invalid piece index. Index: {index}");
 
 			// last piece may be shorter
 			if (index == pieceCount - 1)
 			{
-				int remainder = (int)totalSize % pieceLengthBytes;
-				return remainder == 0 ? pieceLengthBytes : remainder;
+				long expectedSize = totalSize - (long)(pieceLengthBytes * (pieceCount - 1));
+				return (int)Math.Min(expectedSize, pieceLengthBytes);
 			}
 
 			return pieceLengthBytes;
@@ -202,22 +225,24 @@ namespace WiseTorrent.Peers.Classes
 
 		public void UpdatePeerStatesAsync(CancellationToken cToken)
 		{
-			if (_torrentSession == null) return;
-
+			if (_torrentSession == null || PieceManager == null) return;
+			
+			var missingPieces = PieceManager.GetMissingPieces();
+			var rarePieces = PieceManager.GetRarePieces(missingPieces);
 			foreach (var peer in _torrentSession.AllPeers)
 			{
 				if (!_torrentSession.ConnectedPeers.Contains(peer)) peer.DecayScore();
 
 				peer.Metrics.RefreshRates();
-				peer.RarePiecesHeldCount = CalculateRarePiecesCount(peer);
+				peer.RarePiecesHeldCount = CalculateRarePiecesCount(peer, rarePieces);
 				peer.HasAllPieces = IsSeeder(peer);
 				peer.TimeoutCount += IsPeerTimedOut(peer) ? 1 : 0;
 			}
 		}
 
-		private int CalculateRarePiecesCount(Peer peer)
+		private int CalculateRarePiecesCount(Peer peer, IEnumerable<int> rarePieces)
 		{
-			return 0;
+			return peer.AvailablePieces.Count(p => rarePieces.Contains(p));
 		}
 
 		private bool IsSeeder(Peer peer)
@@ -237,35 +262,62 @@ namespace WiseTorrent.Peers.Classes
 
 			foreach (var peer in _torrentSession.ConnectedPeers)
 			{
-				var score = peer.CalculatePeerScore();
-				if (score >= 80)
-				{
-					UnchokePeer(peer);
-					_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} unchoked (Performance score: {score})");
-				}
-				else if (score >= 40)
-				{
-					MonitorPeer(peer);
-					_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} choked, but monitored (Performance score: {score})");
-				}
-				else
-				{
-					await RotatePeer(peer, cToken);
-					_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} replaced (Performance score: {score})");
-				}
+				await HandlePeerPerformanceScore(peer, peer.CalculatePeerScore(), cToken);
+			}
+		}
+
+		public async Task HandlePeerPerformanceScore(Peer peer, int score, CancellationToken cToken)
+		{
+			if (score >= 80)
+			{
+				UnchokePeer(peer);
+				_logger.Info($"Attempted peer {peer.PeerID ?? peer.IPEndPoint.ToString()} unchoke and send interested (Performance score: {score})");
+			}
+			else if (score >= 40)
+			{
+				MonitorPeer(peer);
+				_logger.Info($"Attempted peer {peer.PeerID ?? peer.IPEndPoint.ToString()} choke and send not interested, but monitored (Performance score: {score})");
+			}
+			else
+			{
+				await RotatePeer(peer, cToken);
+				_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} replaced (Performance score: {score})");
 			}
 		}
 
 		private void UnchokePeer(Peer peer)
 		{
-			peer.IsChoked = false;
-			peer.IsInterested = true;
+			if (peer.IsChoked)
+			{
+				peer.IsChoked = false;
+				TryQueueMessage(peer, new PeerMessage(PeerMessageType.Unchoke));
+				_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} unchoked");
+			}
+
+			if (!peer.IsInterested)
+			{
+				peer.IsInterested = true;
+				TryQueueMessage(peer, new PeerMessage(PeerMessageType.Interested));
+				_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} sent interested");
+
+			}
 		}
 
 		private void MonitorPeer(Peer peer)
 		{
-			peer.IsChoked = true;
-			peer.IsInterested = false;
+			if (!peer.IsChoked)
+			{
+				peer.IsChoked = true;
+				TryQueueMessage(peer, new PeerMessage(PeerMessageType.Choke));
+				_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} choked");
+			}
+
+			if (peer.IsInterested)
+			{
+				peer.IsInterested = false;
+				TryQueueMessage(peer, new PeerMessage(PeerMessageType.Interested));
+				_logger.Info($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} sent not interested");
+			}
 		}
 
 		private async Task RotatePeer(Peer peer, CancellationToken cToken)

@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using WiseTorrent.Pieces.Interfaces;
+using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Pieces.Classes
 {
@@ -59,6 +60,11 @@ namespace WiseTorrent.Pieces.Classes
 		{
 			return candidates
 				.OrderBy(p => _pieceRarity.GetValueOrDefault(p, int.MaxValue));
+		}
+
+		public IEnumerable<int> GetRarePieces(IEnumerable<int> candidates)
+		{
+			return candidates.Where(p => _pieceRarity.GetValueOrDefault(p, int.MaxValue) <= SessionConfig.PieceRarityThreshold);
 		}
 	}
 }

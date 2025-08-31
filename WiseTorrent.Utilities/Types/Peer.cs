@@ -14,8 +14,9 @@ namespace WiseTorrent.Utilities.Types
 
 		// Connection State
 		public bool IsConnected { get; set; } = false;
-		public DateTime LastActive { get; set; }
-		public DateTime LastReceived { get; set; }
+		public DateTime LastActive { get; set; } = DateTime.UtcNow;
+		public DateTime LastReceived { get; set; } = DateTime.UtcNow;
+		public DateTime LastConnectAttempt { get; set; } = DateTime.UtcNow;
 
 		// Protocol State
 		public bool HandshakeCompleted { get; set; } = false;
@@ -25,7 +26,6 @@ namespace WiseTorrent.Utilities.Types
 		public bool IsChoked { get; set; } = true;
 		public bool IsInterested { get; set; } = false;
 		public HashSet<int> AvailablePieces { get; set; } = new();
-		public ConcurrentDictionary<Block, DateTime> PendingPieceRequests = new();
 
 		// Transfer Metrics 
 		public PeerMetricsCollector Metrics { get; init; } = new();

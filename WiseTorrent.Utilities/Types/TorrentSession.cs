@@ -31,7 +31,7 @@ namespace WiseTorrent.Utilities.Types
 
 		public ConcurrentDictionary<int, int> PieceRequestCounts = new();
 		public ConcurrentDictionary<Peer, int> PeerRequestCounts = new();
-		public ConcurrentDictionary<Peer, ConcurrentBag<Block>> PendingRequests = new();
+		public ConcurrentDictionary<Peer, ConcurrentDictionary<Block, DateTime>> PendingRequests = new();
 
 		public int TrackerIntervalSeconds { get; set; }
 

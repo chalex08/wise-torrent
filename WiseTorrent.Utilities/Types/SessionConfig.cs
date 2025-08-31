@@ -5,11 +5,11 @@ namespace WiseTorrent.Utilities.Types
 {
 	public static class SessionConfig
 	{
-		public static string TorrentStoragePath { get; set; } = "";
+		public static string TorrentStoragePath { get; set; } = "C:\\Users\\Alex.Chen\\Downloads";
 		public static IPEndPoint LocalIpEndpoint { get; set; } = new(Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork), 6881);
 		public static int PeerTimeoutSeconds { get; set; } = 300;
 		public static int PeerKeepAliveIntervalSeconds { get; set; } = 300;
-		public static TimeSpan PeerStateRefreshTimerSeconds { get; set; } = TimeSpan.FromSeconds(30);
+		public static TimeSpan PeerStateRefreshTimerSeconds { get; set; } = TimeSpan.FromSeconds(120);
 		public static TimeSpan PeerReconnectCooldownSeconds { get; set; } = TimeSpan.FromSeconds(30);
 		public static int MaxSwarmSize { get; set; } = 50;
 		public static int MaxPeerConnectionThreads { get; set; } = (int)(0.2 * MaxSwarmSize);
@@ -22,5 +22,6 @@ namespace WiseTorrent.Utilities.Types
 		public static int MaxRequestsPerPeer { get; set; } = 32;
 		public static int MaxRequestsPerPiece { get; set; } = 5;
 		public static int MaxActivePieces { get; set; } = 16;
+		public static int PieceRarityThreshold { get; set; } = 5;
 	}
 }

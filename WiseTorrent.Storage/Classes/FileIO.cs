@@ -44,7 +44,7 @@ namespace WiseTorrent.Storage.Classes
 				FileAccess.Write,
 				FileShare.Read,
 				bufferSize: 4096,
-				useAsync: true))
+				options: FileOptions.WriteThrough | FileOptions.Asynchronous))
 			{
 				stream.Seek(offset, SeekOrigin.Begin);
 				await stream.WriteAsync(buffer, bufferOffset, count, cancellationToken).ConfigureAwait(false);

@@ -1,17 +1,40 @@
 ﻿namespace WiseTorrent.Utilities.Types
 {
-	public class Block
+	public class Block : IEquatable<Block>
 	{
 		public int PieceIndex { get; }
 		public int Offset { get; }
 		public int Length { get; }
 		public byte[]? Data { get; set; }
+		public bool IsMarkedForRetry { get; set; } = false;
 
 		public Block(int pieceIndex, int offset, int length)
 		{
 			PieceIndex = pieceIndex;
 			Offset = offset;
 			Length = length;
+		}
+
+		public bool Equals(Block? other)
+		{
+			if (other is null) return false;
+			return PieceIndex == other.PieceIndex &&
+				   Offset == other.Offset &&
+				   Length == other.Length;
+		}
+
+		public override bool Equals(object? obj) => Equals(obj as Block);
+
+		public override int GetHashCode()
+		{
+			unchecked
+			{
+				int hash = 17;
+				hash = hash * 31 + PieceIndex;
+				hash = hash * 31 + Offset;
+				hash = hash * 31 + Length;
+				return hash;
+			}
 		}
 
 		public static Block? ParseRequestMessage(byte[] rawMessage)
@@ -63,6 +86,25 @@
 			return block;
 		}
 
+		public static Block? ParseCancelMessage(byte[] rawMessage)
+		{
+			if (rawMessage.Length != 17)
+				return null; // Invalid length for a cancel message
+
+			int lengthPrefix = ReadInt(rawMessage, 0);
+			if (lengthPrefix != 13)
+				return null; // Cancel message must have length prefix of 13
+
+			if (rawMessage[4] != 8)
+				return null; // Not a cancel message
+
+			int pieceIndex = ReadInt(rawMessage, 5);
+			int offset = ReadInt(rawMessage, 9);
+			int blockLength = ReadInt(rawMessage, 13);
+
+			return new Block(pieceIndex, offset, blockLength);
+		}
+
 		private static int ReadInt(byte[] buffer, int offset)
 		{
 			return (buffer[offset] << 24) |
@@ -71,5 +113,23 @@
 				   buffer[offset + 3];
 		}
 
+		public static bool AreBlocksEqual(Block block1, Block block2)
+		{
+			return block1.Offset == block2.Offset && block1.Length == block2.Length && block1.PieceIndex == block2.PieceIndex;
+		}
+
+		public static bool AreBlocksEqual(byte[] payload, Block block)
+		{
+			if (payload.Length != 12)
+				return false;
+
+			int pieceIndex = ReadInt(payload, 0);
+			int offset = ReadInt(payload, 4);
+			int length = ReadInt(payload, 8);
+
+			return pieceIndex == block.PieceIndex &&
+				   offset == block.Offset &&
+				   length == block.Length;
+		}
 	}
 }

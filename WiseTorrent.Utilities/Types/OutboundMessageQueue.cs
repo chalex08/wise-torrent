@@ -23,12 +23,29 @@ namespace WiseTorrent.Utilities.Types
 
 		public async Task<PeerMessage?> DequeueAsync(CancellationToken token)
 		{
-			await _signal.WaitAsync(token);
+			while (true)
+			{
+				await _signal.WaitAsync(token);
 
-			if (_queue.TryDequeue(out var message))
-				return message;
+				if (_queue.TryDequeue(out var msg))
+				{
+					if (!msg.IsCanceled)
+						return msg;
+				}
+			}
+		}
 
-			return null;
+		public void CancelBlock(Block canceledBlock)
+		{
+			foreach (var msg in _queue)
+			{
+				if (msg.MessageType == PeerMessageType.Piece &&
+					Block.AreBlocksEqual(msg.Payload, canceledBlock))
+				{
+					msg.IsCanceled = true;
+					break;
+				}
+			}
 		}
 	}
 

@@ -1,4 +1,7 @@
-﻿namespace WiseTorrent.Utilities.Types
+﻿using System.Buffers.Binary;
+using System.Text;
+
+namespace WiseTorrent.Utilities.Types
 {
    
 	// Enum for known BitTorrent message types
@@ -24,6 +27,7 @@
 
 		// Optional payload data
 		public byte[] Payload { get; set; } = Array.Empty<byte>();
+		public bool IsCanceled { get; set; } = false;
 
 		// Constructor
 		public PeerMessage(PeerMessageType type, byte[]? payload = null)
@@ -91,80 +95,49 @@
 
 		public static PeerMessage CreateRequestMessage(Block block)
 		{
-			const byte messageId = (byte)PeerMessageType.Request; // 'request' message
-			const int payloadLength = 13; // piece index + offset + length
-
-			var buffer = new byte[4 + payloadLength]; // total = 17 bytes
-
-			// Length prefix (big-endian)
-			WriteInt(buffer, 0, payloadLength);
-
-			// Message ID
-			buffer[4] = messageId;
+			const int payloadLength = 12; // piece index + offset + length
+			var payload = new byte[payloadLength];
 
 			// Piece index
-			WriteInt(buffer, 5, block.PieceIndex);
+			WriteInt(payload, 0, block.PieceIndex);
 
 			// Block offset
-			WriteInt(buffer, 9, block.Offset);
+			WriteInt(payload, 4, block.Offset);
 
 			// Block length
-			WriteInt(buffer, 13, block.Length);
+			WriteInt(payload, 8, block.Length);
 
-			return new PeerMessage(PeerMessageType.Request, buffer);
+			return new PeerMessage(PeerMessageType.Request, payload);
 		}
 
 		public static PeerMessage CreatePieceMessage(Block block)
 		{
-			const byte messageId = (byte)PeerMessageType.Piece; // 'piece' message ID
 			int dataLength = block.Data!.Length;
-			int payloadLength = 1 + 4 + 4 + dataLength; // ID + index + offset + data
-
-			var buffer = new byte[4 + payloadLength]; // total = 4 (length prefix) + payload
-
-			// Length prefix (big-endian)
-			WriteInt(buffer, 0, payloadLength);
-
-			// Message ID
-			buffer[4] = messageId;
+			var payload = new byte[4 + 4 + dataLength]; // index + offset + data
 
 			// Piece index
-			WriteInt(buffer, 5, block.PieceIndex);
+			WriteInt(payload, 0, block.PieceIndex);
 
 			// Block offset
-			WriteInt(buffer, 9, block.Offset);
+			WriteInt(payload, 4, block.Offset);
 
 			// Block data
-			Buffer.BlockCopy(block.Data, 0, buffer, 13, dataLength);
+			Buffer.BlockCopy(block.Data, 0, payload, 8, dataLength);
 
-			return new PeerMessage(PeerMessageType.Piece, buffer);
+			return new PeerMessage(PeerMessageType.Piece, payload);
 		}
 
 		public static PeerMessage CreateHaveMessage(int pieceIndex)
 		{
-			const byte messageId = (byte)PeerMessageType.Have; // 'have' message ID
-			const int payloadLength = 5; // 1 byte for ID + 4 bytes for piece index
+			var payload = new byte[4]; // piece index
+			WriteInt(payload, 0, pieceIndex);
 
-			var buffer = new byte[4 + payloadLength]; // 4-byte length prefix + payload
-
-			// Length prefix (big-endian)
-			WriteInt(buffer, 0, payloadLength);
-
-			// Message ID
-			buffer[4] = messageId;
-
-			// Piece index
-			WriteInt(buffer, 5, pieceIndex);
-
-			return new PeerMessage(PeerMessageType.Have, buffer);
+			return new PeerMessage(PeerMessageType.Have, payload);
 		}
 
 		private static void WriteInt(byte[] buffer, int offset, int value)
 		{
-			buffer[offset] = (byte)((value >> 24) & 0xFF);
-			buffer[offset + 1] = (byte)((value >> 16) & 0xFF);
-			buffer[offset + 2] = (byte)((value >> 8) & 0xFF);
-			buffer[offset + 3] = (byte)(value & 0xFF);
+			BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(offset, 4), value);
 		}
 
 		// For debugging/logging

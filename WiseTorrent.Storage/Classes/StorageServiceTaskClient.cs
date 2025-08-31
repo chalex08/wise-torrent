@@ -41,6 +41,7 @@ namespace WiseTorrent.Storage.Classes
 				if (block == null) continue;
 
 				await _fileManager.WriteBlockAsync(block, fileMap, CToken);
+				torrentSession.RemainingBytes -= block.Length;
 			}
 
 			_logger.Info("Storage service task stopped");

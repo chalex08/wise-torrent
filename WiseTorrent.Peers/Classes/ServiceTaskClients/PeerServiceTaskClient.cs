@@ -50,13 +50,13 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			_pieceManager = _pieceManagerFactory(torrentSession.Info.PieceHashes.Length);
 			_peerMessageHandler = new PeerMessageHandler(_peerMessageHandlerLogger, torrentSession, _peerManager, _pieceManager);
 
-			InitialisePieces(torrentSession);
-			_logger.Info("Initialised pieces");
-
 			_logger.Info("Peer initialisation started");
 			_peerManager.PieceManager = _pieceManager;
 			await _peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken);
 			_logger.Info("Connected to peers");
+
+			InitialisePieces(torrentSession);
+			_logger.Info("Initialised pieces");
 
 			InitialiseServiceTaskClients(torrentSession);
 			
@@ -72,11 +72,20 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			_logger.Info("Subscribed to events");
 
 			_logger.Info("Peer service task started");
+			var pieceCount = torrentSession.Info.PieceHashes.Length;
 			while (!CToken.IsCancellationRequested)
 			{
 				try
 				{
 					await Task.Delay(5000, CToken);
+					_logger.Warn($"[Status Update] Torrent is {(torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount):F2}% complete");
+
+					if (torrentSession.ConnectedPeers.Count == 0)
+					{
+						var now = DateTime.UtcNow;
+						var retryPeers = torrentSession.AllPeers.Where(p => p.ProtocolStage == PeerProtocolStage.AwaitingHandshake && now - p.LastConnectAttempt >= TimeSpan.FromSeconds(60));
+						if (retryPeers.Any()) await _peerManager.ConnectToAllPeersAsync(retryPeers, CToken);
+					}
 				}
 				catch (Exception ex)
 				{
@@ -95,7 +104,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			var index = 0;
 			foreach (var pieceHash in torrentSession.Info.PieceHashes)
 			{
-				torrentSession.Pieces.Add(new Piece(index++, pieceHash, _peerManager.GetPieceLength(index)));
+				torrentSession.Pieces.Add(new Piece(index, pieceHash, _peerManager.GetPieceLength(index++)));
 			}
 		}
 

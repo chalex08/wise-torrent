@@ -3,6 +3,7 @@
 @using WiseTorrent.Utilities.Types
 @inject ILogService LogService
 @inject IJSRuntime JS
+@inject ILogger<Console> logger
 
 <PageTitle>Console</PageTitle>
 
@@ -109,7 +110,15 @@
 	private void HandleLog(LogEntry entry)
 	{
 		logs.Add(entry);
-		logsSnapshot = logs.ToList();
+		try
+		{
+			logsSnapshot = logs.ToList();
+		}
+		catch
+		{
+			logger.Warn("Log buffer overloaded, can ignore");
+		}
+
 		shouldScroll = true;
 		InvokeAsync(StateHasChanged);
 	}
@@ -123,6 +132,7 @@
 		}
 
 		logs = LogService.GetLogs().ToList();
+		logsSnapshot = logs.ToList();
 		JS.InvokeVoidAsync("scrollToEnd", logContainer);
 	}
 	

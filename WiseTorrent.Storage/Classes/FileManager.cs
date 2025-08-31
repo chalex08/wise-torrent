@@ -50,6 +50,9 @@ namespace WiseTorrent.Storage.Classes
 						segment.Length - segmentOffsetWithinPiece,
 						blockRemaining);
 
+					if (block.Data == null || block.Data.All(b => b == 0))
+						_logger.Warn($"Block data is null or zero-filled (Piece Index: {block.PieceIndex}, Offset: {block.Offset})");
+
 					// Ensure file allocation
 					if (!_diskAllocator.VerifyAllocation(segment.FilePath, writeStartInFile + writeLength))
 					{

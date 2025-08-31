@@ -8,5 +8,6 @@
 		void UpdatePieceRarityFromPeer(HashSet<int> peerPieces);
 		void RemovePeerFromRarity(HashSet<int> peerPieces);
 		IEnumerable<int> GetRarestPieces(IEnumerable<int> candidates);
+		IEnumerable<int> GetRarePieces(IEnumerable<int> candidates);
 	}
 }
