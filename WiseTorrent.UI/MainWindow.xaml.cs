@@ -11,6 +11,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.Extensions.DependencyInjection;
 using WiseTorrent.UI.Services;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace WiseTorrent.UI;
 
@@ -21,6 +23,15 @@ public partial class MainWindow : Window
 {
 	public static MainWindow? Instance { get; private set; }
 	private readonly FullscreenStateService _fullscreenService;
+
+	[DllImport("user32.dll")]
+	private static extern bool ReleaseCapture();
+
+	[DllImport("user32.dll")]
+	private static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+
+	private const int WM_NCLBUTTONDOWN = 0xA1;
+	private const int HTCAPTION = 0x2;
 
 	public MainWindow()
 	{
@@ -59,4 +70,10 @@ public partial class MainWindow : Window
 		}
 	}
 
+	public void DragWindow()
+	{
+		var hwnd = new WindowInteropHelper(this).Handle;
+		ReleaseCapture();
+		SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+	}
 }
