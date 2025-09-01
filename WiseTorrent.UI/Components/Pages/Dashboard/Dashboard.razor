@@ -1,13 +1,13 @@
 ﻿@page "/"
 @namespace WiseTorrent.UI.Components.Pages.Dashboard
-@* @using WiseTorrent.Core.Interfaces *@
 @using WiseTorrent.Core.Interfaces
 @using WiseTorrent.UI.Services
 @using WiseTorrent.Utilities.Types
+@using System.IO
 
 @inject UIStateService UIStateService
 @inject IFilePickerService FilePickerService
-@* @inject ITorrentEngine TorrentEngine *@
+@inject ITorrentEngine TorrentEngine
 @inject ITorrentSessionManager TorrentSessionManager
 @inject NotificationService NotificationService
 
@@ -51,38 +51,29 @@
                 <td class="d-flex gap-2">
                     @if (state == EventState.Started)
                     {
-                        <button class="btn btn-outline-warning btn-sm" @onclick="() => Pause(TorrentFilepath)">Pause</button>
+                        <button class="btn btn-outline-warning"
+                                @onclick="() => Pause(TorrentFilepath)">
+                            <i class="bi bi-pause-fill"></i>
+                        </button>
                     }
                     else
                     {
-                        <button class="btn btn-outline-success btn-sm" @onclick="() => Start(TorrentFilepath)">Start</button>
+                        <button class="btn btn-outline-success"
+                                @onclick="() => Start(TorrentFilepath)">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
                     }
-                    <button class="btn btn-outline-danger btn-sm" @onclick="() => Cancel(TorrentFilepath)">Cancel</button>
+                    <button class="btn btn-outline-danger"
+                            @onclick="() => Cancel(TorrentFilepath)">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
                 </td>
             </tr>
         }
     </tbody>
 </table>
 
-<button @onclick="AddTorrentDebug">Add a new torrent</button>
-
 @code {
-    // TODO
-    // REMOVE THIS
-    void AddTorrentDebug()
-    {
-        UIStateService.TorrentFilepaths.Add("New torrent");
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        UIStateService.TorrentFilepaths = TorrentSessionManager.AllSessions
-        .Select(session => session.Info.Name)
-        .ToList();
-
-        await Task.CompletedTask;
-    }
-
     int GetProgressPercent(string TorrentFilepath)
     {
         var session = TorrentSessionManager.GetSession(TorrentFilepath);
@@ -95,7 +86,14 @@
     EventState GetTorrentState(string TorrentFilepath)
     {
         var session = TorrentSessionManager.GetSession(TorrentFilepath);
-        return session == null ? EventState.None : session.CurrentEvent;
+        if (session != null)
+            return session.CurrentEvent;
+
+        // If it exists in the UI but has no active session → it's paused/queued
+        if (UIStateService.TorrentFilepaths.Contains(TorrentFilepath))
+            return EventState.Stopped;
+
+        return EventState.None; // Never added
     }
 
     void SelectTorrentFile()
@@ -109,20 +107,22 @@
     void Start(string TorrentFilepath)
     {
         if (string.IsNullOrEmpty(TorrentFilepath)) return;
-        // TorrentEngine.StartTorrentEngineSession(selectedFile);
+        TorrentEngine.StartTorrentEngineSession(TorrentFilepath);
+        InvokeAsync(StateHasChanged);
     }
 
-    void Pause(string TorrentFilepath)
+    async Task Pause(string TorrentFilepath)
     {
         if (string.IsNullOrEmpty(TorrentFilepath)) return;
-        // TODO
-        // AT THE TIME OF WRITING, THIS IS NOT A REAL TORRENT ENGINE FUNCTIONALITY
-        // TorrentEngine.PauseTorrentEngineSession(selectedFile);
+        await TorrentEngine.PauseTorrentEngineSession(TorrentFilepath);
+        await InvokeAsync(StateHasChanged);
     }
 
-    void Cancel(string TorrentFilepath)
+    async Task Cancel(string TorrentFilepath)
     {
         if (string.IsNullOrEmpty(TorrentFilepath)) return;
-        // TorrentEngine.CancelTorrentEngineSession(selectedFile);
+        await TorrentEngine.CancelTorrentEngineSession(TorrentFilepath);
+        UIStateService.TorrentFilepaths.Remove(TorrentFilepath);
+        await InvokeAsync(StateHasChanged);
     }
 }

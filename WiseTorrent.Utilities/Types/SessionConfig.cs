@@ -6,7 +6,10 @@ namespace WiseTorrent.Utilities.Types
 	public static class SessionConfig
 	{
 		// Default values
-		public static readonly string DefaultTorrentStoragePath = "";
+		public static readonly string DefaultTorrentStoragePath = Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+			"Downloads"
+		);
 		public static readonly int DefaultPeerTimeoutSeconds = 300;
 		public static readonly int DefaultPeerKeepAliveIntervalSeconds = 300;
 		public static readonly TimeSpan DefaultPeerStateRefreshTimerSeconds = TimeSpan.FromSeconds(30);
@@ -41,7 +44,7 @@ namespace WiseTorrent.Utilities.Types
         public static int MaxRequestsPerPiece { get; set; } = DefaultMaxRequestsPerPiece;
         public static int MaxActivePieces { get; set; } = DefaultMaxActivePieces;
 
-		public static void ResetDefaultValues()
+        public static void ResetDefaultValues()
         {
 			TorrentStoragePath = DefaultTorrentStoragePath;
 			PeerTimeoutSeconds = DefaultPeerTimeoutSeconds;
