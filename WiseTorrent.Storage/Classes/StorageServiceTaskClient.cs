@@ -40,10 +40,17 @@ namespace WiseTorrent.Storage.Classes
 				var block = await DequeueAsync(CToken);
 				if (block == null) continue;
 
-				await _fileManager.WriteBlockAsync(block, fileMap, CToken);
+				await _fileManager.WriteBlockAsync(block, fileMap, CancellationToken.None);
 				torrentSession.RemainingBytes -= block.Length;
 			}
 
+			if (torrentSession.ShouldFlushOnShutdown)
+			{
+				int flushCount = await FlushRemainingPiecesAsync(torrentSession);
+				_logger.Info($"Storage service task flushed remaining {flushCount} blocks");
+				torrentSession.OnPiecesFlushed.NotifyListeners(true);
+			}
+			
 			_logger.Info("Storage service task stopped");
 		}
 
@@ -67,6 +74,22 @@ namespace WiseTorrent.Storage.Classes
 			}
 
 			return null;
+		}
+
+		private async Task<int> FlushRemainingPiecesAsync(TorrentSession torrentSession)
+		{
+			int flushCount = 0;
+			while (!_queue.IsEmpty)
+			{
+				var block = await DequeueAsync(CancellationToken.None);
+				if (block == null) continue;
+
+				await _fileManager.WriteBlockAsync(block, torrentSession.FileMap, CancellationToken.None);
+				torrentSession.RemainingBytes -= block.Length;
+				flushCount++;
+			}
+
+			return flushCount;
 		}
 	}
 }

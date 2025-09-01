@@ -152,7 +152,7 @@ namespace WiseTorrent.Peers.Classes
 				{
 					if (token.IsCancellationRequested) break;
 
-					if (_torrentSession.PeerRequestCounts[peer] >= SessionConfig.MaxRequestsPerPeer)
+					if (_torrentSession.PeerRequestCounts.GetOrAdd(peer, 0) >= SessionConfig.MaxRequestsPerPeer)
 						break;
 
 					if (pending.TryGetValue(block, out var timestamp))

@@ -259,6 +259,12 @@ namespace WiseTorrent.Peers.Classes
 				BroadcastHaveMessage(block.PieceIndex, cToken);
 				_logger.Info($"Broadcasted HAVE for Piece {block.PieceIndex}");
 
+				if (_pieceManager.HasAllPieces() && _torrentSession.Pieces.All.All(p => p.IsPieceComplete()))
+				{
+					_torrentSession.OnFileCompleted.NotifyListeners(true);
+					return;
+				}
+
 				if (!peer.IsChoked && peer.IsInterested)
 				{
 					_peerManager.QueuePieceRequests(peer, cToken);

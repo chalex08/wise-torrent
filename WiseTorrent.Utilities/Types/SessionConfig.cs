@@ -23,5 +23,9 @@ namespace WiseTorrent.Utilities.Types
 		public static int MaxRequestsPerPiece { get; set; } = 5;
 		public static int MaxActivePieces { get; set; } = 16;
 		public static int PieceRarityThreshold { get; set; } = 5;
+		public static TimeSpan PieceRequestTimeoutLimitSeconds { get; set; } = TimeSpan.FromSeconds(5);
+		public static int MaxLogEntriesCount { get; set; } = 1000;
+		public static int LogRefreshThreshold { get; set; } = 10;
+		public static TimeSpan LogRefreshIntervalSeconds { get; set; } = TimeSpan.FromSeconds(1);
 	}
 }

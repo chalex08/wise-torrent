@@ -1,9 +1,9 @@
 @page "/console"
+@using System.Text.RegularExpressions
 @using WiseTorrent.Utilities.Interfaces
 @using WiseTorrent.Utilities.Types
 @inject ILogService LogService
 @inject IJSRuntime JS
-@inject ILogger<Console> logger
 
 <PageTitle>Console</PageTitle>
 
@@ -12,13 +12,19 @@
 
 	<main class="console-body">
 		<div id="logViewer" class="log-viewer" @ref="logContainer">
-			@foreach (var entry in logsSnapshot)
+			@foreach (var entry in logs)
 			{
 				<div id="message" style="margin: 0; padding: 0; line-height: 1.2; color:@GetColor(entry.Level);">
 					<b>[@entry.Timestamp] [@entry.Level] [@entry.ClassName]</b> @entry.Message
 				</div>
 			}
 		</div>
+		@if (ProgressPercent >= 0)
+		{
+			<div class="completion-indicator">
+				<b>Progress:</b> @ProgressPercent.ToString("F4")%
+			</div>
+		}
 	</main>
 </div>
 
@@ -46,26 +52,20 @@
 </style>
 
 <script>
-	window.scrollToEnd = function (element) {
-	if (element) {
-	element.scrollTop = element.scrollHeight;
-	console.log("Scrolled to bottom");
-	} else {
-	console.warn("Element is null");
-	}
-	};
-
 	window.logViewerState = {
-	isAtBottom: true
+	isPinnedToBottom: true
 	};
 
-	window.trackScrollPosition = function (element, epsilon = 2) {
+	window.trackScrollPosition = function (element) {
 	if (!element) return;
 
 	const updateScrollState = () => {
 	const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-	window.logViewerState.isAtBottom = Math.abs(distance) <= epsilon;
-	console.log("Scroll state:", window.logViewerState.isAtBottom);
+	const isNearBottom = distance <= element.clientHeight * 0.1;
+
+	if (!isNearBottom) {
+	window.logViewerState.isPinnedToBottom = false;
+	}
 	};
 
 	element.addEventListener("scroll", updateScrollState);
@@ -73,7 +73,13 @@
 	};
 
 	window.getScrollState = function () {
-	return window.logViewerState.isAtBottom;
+	return window.logViewerState.isPinnedToBottom;
+	};
+
+	window.scrollToEnd = function (element) {
+	if (element) {
+	element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+	}
 	};
 
 	window.adjustLogViewerHeight = function (fontSize = "0.8rem") {
@@ -101,26 +107,32 @@
 </script>
 
 @code {
-	private List<LogEntry> logs = new();
-	private IReadOnlyList<LogEntry> logsSnapshot = Array.Empty<LogEntry>();
+	private double ProgressPercent = 0;
+	private IReadOnlyList<LogEntry> logs = Array.Empty<LogEntry>();
 	private ElementReference logContainer;
 	private bool shouldScroll = false;
 	private bool _subscribed = false;
+	private DateTime lastRefresh = DateTime.UtcNow;
+	private int pendingLogCount = 0;
+	private string pattern = @"Torrent is (\d+\.\d+)% complete";
 
 	private void HandleLog(LogEntry entry)
 	{
-		logs.Add(entry);
-		try
+		Match match = Regex.Match(entry.Message, pattern);
+		if (entry.Level == LogLevel.Warn && match.Success && double.TryParse(match.Groups[1].Value, out double completion))
 		{
-			logsSnapshot = logs.ToList();
-		}
-		catch
-		{
-			logger.Warn("Log buffer overloaded, can ignore");
+			ProgressPercent = completion;
 		}
 
-		shouldScroll = true;
-		InvokeAsync(StateHasChanged);
+		var now = DateTime.UtcNow;
+		if (++pendingLogCount >= SessionConfig.LogRefreshThreshold || now - lastRefresh >= SessionConfig.LogRefreshIntervalSeconds)
+		{
+			logs = LogService.GetLogs();
+			pendingLogCount = 0;
+			lastRefresh = now;
+			shouldScroll = true;
+			InvokeAsync(StateHasChanged);
+		}
 	}
 
 	protected override void OnInitialized()
@@ -131,9 +143,7 @@
 			_subscribed = true;
 		}
 
-		logs = LogService.GetLogs().ToList();
-		logsSnapshot = logs.ToList();
-		JS.InvokeVoidAsync("scrollToEnd", logContainer);
+		logs = LogService.GetLogs();
 	}
 	
 	protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -142,6 +152,7 @@
 		{
 			await JS.InvokeVoidAsync("adjustLogViewerHeight");
 			await JS.InvokeVoidAsync("trackScrollPosition", logContainer, 2);
+			await JS.InvokeVoidAsync("scrollToEnd", logContainer);
 		}
 
 		if (shouldScroll)

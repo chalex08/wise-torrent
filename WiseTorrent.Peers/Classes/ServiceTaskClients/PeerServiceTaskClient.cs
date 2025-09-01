@@ -1,4 +1,5 @@
 ﻿using WiseTorrent.Peers.Interfaces;
+using WiseTorrent.Pieces.Classes;
 using WiseTorrent.Pieces.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
@@ -47,7 +48,15 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		public async Task StartServiceTask(TorrentSession torrentSession, CancellationToken cToken)
 		{
 			CToken = cToken;
-			_pieceManager = _pieceManagerFactory(torrentSession.Info.PieceHashes.Length);
+			if (torrentSession.PieceManagerSnapshot != null)
+			{
+				_pieceManager = PieceManager.RestoreFromSnapshot(torrentSession.PieceManagerSnapshot);
+			}
+			else
+			{
+				_pieceManager = _pieceManagerFactory(torrentSession.Info.PieceHashes.Length);
+			}
+
 			_peerMessageHandler = new PeerMessageHandler(_peerMessageHandlerLogger, torrentSession, _peerManager, _pieceManager);
 
 			_logger.Info("Peer initialisation started");
@@ -55,7 +64,10 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			await _peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken);
 			_logger.Info("Connected to peers");
 
-			InitialisePieces(torrentSession);
+			if (torrentSession.Pieces.Count == 0)
+			{
+				InitialisePieces(torrentSession);
+			}
 			_logger.Info("Initialised pieces");
 
 			InitialiseServiceTaskClients(torrentSession);
@@ -78,7 +90,8 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				try
 				{
 					await Task.Delay(5000, CToken);
-					_logger.Warn($"[Status Update] Torrent is {(torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount):F2}% complete");
+					var completion = (torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount);
+					_logger.Warn($"[Status Update] Torrent is {completion:F4}% complete");
 
 					if (torrentSession.ConnectedPeers.Count == 0)
 					{
@@ -95,6 +108,12 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 			_logger.Info("Stopping peer child service tasks");
 			await StopAllPeerServiceTasks(torrentSession);
+
+			if (torrentSession.ShouldSnapshotOnShutdown)
+			{
+				torrentSession.OnPieceManagerSnapshotted.NotifyListeners(_pieceManager.CreateSnapshot());
+				_logger.Info("Peer service task snapshotted piece manager state");
+			}
 
 			_logger.Info("Peer service task, and all child service tasks, stopped");
 		}

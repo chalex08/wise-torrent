@@ -42,6 +42,13 @@ namespace WiseTorrent.Utilities.Types
 		public SessionEvent<Block> OnBlockReceived = new();
 		public SessionEvent<Peer> OnPeerConnected = new();
 		public SessionEvent<Peer> OnPeerDisconnected = new();
+		public SessionEvent<bool> OnPiecesFlushed = new();
+		public SessionEvent<PieceManagerSnapshot> OnPieceManagerSnapshotted = new();
+		public SessionEvent<bool> OnFileCompleted = new();
+
+		public bool ShouldFlushOnShutdown = false;
+		public bool ShouldSnapshotOnShutdown = false;
+		public PieceManagerSnapshot? PieceManagerSnapshot { get; set; }
 
 		public static TorrentSession CreateSessionFromMetadata(TorrentMetadata torrentMetadata)
 		{
@@ -55,7 +62,7 @@ namespace WiseTorrent.Utilities.Types
 
 			return new TorrentSession
 			{
-				Info = torrentMetadata.Info,
+				Info = info,
 				InfoHash = torrentMetadata.InfoHash,
 				LocalPeer = new Peer { PeerID = peerId, IPEndPoint = SessionConfig.LocalIpEndpoint },
 				FileMap = new FileMap(pieceLength, files),
@@ -65,6 +72,29 @@ namespace WiseTorrent.Utilities.Types
 				TrackerUrls = torrentMetadata.AnnounceList?.SelectMany(urls => urls).ToList() ?? [torrentMetadata.Announce!],
 				CurrentTrackerUrlIndex = 0,
 				TrackerIntervalSeconds = 0
+			};
+		}
+
+		public static TorrentSession CreateSessionFromSnapshot(PausedTorrentSessionSnapshot snapshot)
+		{
+			var peerId = "-WTOR01-" + Guid.NewGuid().ToString("N").Substring(0, 12);
+			var info = snapshot.Info;
+			var pieceLength = info.PieceLength.ConvertUnit(ByteUnit.Byte).Size;
+			List<TorrentFile> files = info.IsMultiFile ? info.Files! : [new TorrentFile(info.Length!, [info.Name])];
+
+			return new TorrentSession
+			{
+				Info = info,
+				InfoHash = snapshot.InfoHash,
+				LocalPeer = new Peer { PeerID = peerId, IPEndPoint = SessionConfig.LocalIpEndpoint },
+				FileMap = new FileMap(pieceLength, files),
+				TotalBytes = snapshot.TotalBytes,
+				RemainingBytes = snapshot.RemainingBytes,
+				CurrentEvent = EventState.Started,
+				TrackerUrls = snapshot.TrackerUrls,
+				CurrentTrackerUrlIndex = snapshot.CurrentTrackerUrlIndex,
+				TrackerIntervalSeconds = 0,
+				PieceManagerSnapshot = snapshot.PieceManagerSnapshot
 			};
 		}
 	}
