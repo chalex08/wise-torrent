@@ -25,8 +25,13 @@ namespace WiseTorrent.Utilities.Types
 		public static readonly int DefaultMaxRequestsPerPeer = 32;
 		public static readonly int DefaultMaxRequestsPerPiece = 5;
 		public static readonly int DefaultMaxActivePieces = 16;
+        public static int PieceRarityThreshold { get; set; } = 5;
+        public static TimeSpan PieceRequestTimeoutLimitSeconds { get; set; } = TimeSpan.FromSeconds(5);
+        public static int MaxLogEntriesCount { get; set; } = 1000;
+        public static int LogRefreshThreshold { get; set; } = 10;
+        public static TimeSpan LogRefreshIntervalSeconds { get; set; } = TimeSpan.FromSeconds(1);
 
-		public static string TorrentStoragePath { get; set; } = DefaultTorrentStoragePath;
+        public static string TorrentStoragePath { get; set; } = DefaultTorrentStoragePath;
         public static IPEndPoint LocalIpEndpoint { get; set; } = new(Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork), 6881);
         public static int PeerTimeoutSeconds { get; set; } = DefaultPeerTimeoutSeconds;
         public static int PeerKeepAliveIntervalSeconds { get; set; } = DefaultPeerKeepAliveIntervalSeconds;
