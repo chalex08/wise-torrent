@@ -13,7 +13,10 @@
 
 <PageTitle>Dashboard</PageTitle>
 
-<h1>Dashboard</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Dashboard</h1>
+    <button class="btn btn-outline-primary" @onclick="SelectTorrentFile">Add torrent</button>
+</div>
 
 <table class="table table-modern">
     <thead>
@@ -85,7 +88,7 @@
         var session = TorrentSessionManager.GetSession(TorrentFilepath);
         return session == null
             ? 0
-            : (int)((double)(session.TotalBytes - session.RemainingBytes) / session.TotalBytes * 100)
+            : (int)(1 - (session.RemainingBytes / session.TotalBytes))
     ;
     }
 
@@ -93,6 +96,13 @@
     {
         var session = TorrentSessionManager.GetSession(TorrentFilepath);
         return session == null ? EventState.None : session.CurrentEvent;
+    }
+
+    void SelectTorrentFile()
+    {
+        var selectedFile = FilePickerService.PickFile();
+        if (selectedFile == null) return;
+        UIStateService.TorrentFilepaths.Add(selectedFile);
     }
 
 
