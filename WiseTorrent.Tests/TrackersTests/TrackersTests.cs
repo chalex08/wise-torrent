@@ -68,7 +68,7 @@ namespace WiseTorrent.Tests.TrackersTests
 			};
 
 			List<Peer> responsePeers = new();
-			var trackerServiceTaskClient = new TrackerServiceTaskClient(_logger, _trackerClientFactory, torrentSession);
+			var trackerServiceTaskClient = new TrackerServiceTaskClient(_logger, _trackerClientFactory);
 
 			var cts = new CancellationTokenSource();
 			torrentSession.OnTrackerResponse.Subscribe(peers =>
@@ -81,7 +81,7 @@ namespace WiseTorrent.Tests.TrackersTests
 			{
 				try
 				{
-					await trackerServiceTaskClient.StartServiceTask(cts.Token);
+					await trackerServiceTaskClient.StartServiceTask(torrentSession, cts.Token);
 				}
 				catch (OperationCanceledException)
 				{

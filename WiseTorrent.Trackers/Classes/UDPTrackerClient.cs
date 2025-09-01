@@ -40,9 +40,11 @@ namespace WiseTorrent.Trackers.Classes
 
 				_logger.Info("Performing tracker announce");
 				var peers = await PerformTrackerAnnounce(udpClient, endpoint, torrentSession, timeoutCts.Token);
+				var newPeers =new ConcurrentSet<Peer>();
+				newPeers.AddRange(peers.Where(p => p.PeerID != torrentSession.LocalPeer.PeerID));
 
 				_logger.Info("Peer list received, notifying listeners");
-				torrentSession.OnTrackerResponse.NotifyListeners(peers);
+				torrentSession.OnTrackerResponse.NotifyListeners(newPeers);
 			}
 			catch (Exception ex)
 			{
@@ -93,7 +95,7 @@ namespace WiseTorrent.Trackers.Classes
 			return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(buffer, 8));
 		}
 
-		private async Task<List<Peer>> PerformTrackerAnnounce(UdpClient udpClient, IPEndPoint endpoint, TorrentSession torrentSession, CancellationToken timeoutCt)
+		private async Task<ConcurrentSet<Peer>> PerformTrackerAnnounce(UdpClient udpClient, IPEndPoint endpoint, TorrentSession torrentSession, CancellationToken timeoutCt)
 		{
 			var announceTransactionId = _random.Next();
 			var announceRequest = BuildAnnounceRequest(announceTransactionId, torrentSession);
@@ -139,7 +141,7 @@ namespace WiseTorrent.Trackers.Classes
 			return buffer;
 		}
 
-		private List<Peer> ParseAnnounceResponse(byte[] buffer, int expectedTransactionId, TorrentSession torrentSession)
+		private ConcurrentSet<Peer> ParseAnnounceResponse(byte[] buffer, int expectedTransactionId, TorrentSession torrentSession)
 		{
 			var action = NetworkToHostInt32(buffer, 0);
 			var transactionId = NetworkToHostInt32(buffer, 4);
@@ -150,7 +152,7 @@ namespace WiseTorrent.Trackers.Classes
 			torrentSession.LeecherCount = NetworkToHostInt32(buffer, 12);
 			torrentSession.SeederCount = NetworkToHostInt32(buffer, 16);
 
-			var peerList = new List<Peer>();
+			var peerList = new ConcurrentSet<Peer>();
 			for (int i = 20; i < buffer.Length; i += 6)
 			{
 				var ip = new IPAddress(buffer[i..(i + 4)]);
