@@ -42,7 +42,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			var now = DateTime.UtcNow;
 			foreach (var kvp in pending)
 			{
-				if (kvp.Value < now - TimeSpan.FromSeconds(30))
+				if (kvp.Value < now - SessionConfig.PieceRequestTimeoutLimitSeconds)
 				{
 					kvp.Key.IsMarkedForRetry = true;
 				}

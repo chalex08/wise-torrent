@@ -134,6 +134,7 @@ namespace WiseTorrent.Core.Classes
 			torrentSession.OnFileCompleted.Subscribe(async _ =>
 			{
 				await HandleFileCompletion(torrentSession);
+				torrentSession.CurrentEvent = EventState.Completed;
 			});
 		}
 
