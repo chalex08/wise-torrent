@@ -1,6 +1,118 @@
 ﻿@page "/"
+@namespace WiseTorrent.UI.Components.Pages.Dashboard
+@* @using WiseTorrent.Core.Interfaces *@
+@using WiseTorrent.Core.Interfaces
+@using WiseTorrent.UI.Services
+@using WiseTorrent.Utilities.Types
+
+@inject UIStateService UIStateService
+@inject IFilePickerService FilePickerService
+@* @inject ITorrentEngine TorrentEngine *@
+@inject ITorrentSessionManager TorrentSessionManager
+@inject NotificationService NotificationService
+
 <PageTitle>Dashboard</PageTitle>
 
 <h1>Dashboard</h1>
 
-@namespace WiseTorrent.UI.Components.Pages.Dashboard
+<table class="table table-modern">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Progress</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var TorrentFilepath in UIStateService.TorrentFilepaths)
+        {
+            var progress = GetProgressPercent(TorrentFilepath);
+            var state = GetTorrentState(TorrentFilepath);
+
+            <tr class="torrent-row">
+                <td>@TorrentFilepath</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1" style="height: 0.75rem;">
+                            <div class="progress-bar" role="progressbar" style="width:@progress%"
+                                aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                        <span class="ms-2">@progress%</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge @(state == EventState.Started ? "bg-success" : "bg-secondary")">@state</span>
+                </td>
+                <td class="d-flex gap-2">
+                    @if (state == EventState.Started)
+                    {
+                        <button class="btn btn-outline-warning btn-sm" @onclick="() => Pause(TorrentFilepath)">Pause</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-success btn-sm" @onclick="() => Start(TorrentFilepath)">Start</button>
+                    }
+                    <button class="btn btn-outline-danger btn-sm" @onclick="() => Cancel(TorrentFilepath)">Cancel</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button @onclick="AddTorrentDebug">Add a new torrent</button>
+
+@code {
+    // TODO
+    // REMOVE THIS
+    void AddTorrentDebug()
+    {
+        UIStateService.TorrentFilepaths.Add("New torrent");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        UIStateService.TorrentFilepaths = TorrentSessionManager.AllSessions
+        .Select(session => session.Info.Name)
+        .ToList();
+
+        await Task.CompletedTask;
+    }
+
+    int GetProgressPercent(string TorrentFilepath)
+    {
+        var session = TorrentSessionManager.GetSession(TorrentFilepath);
+        return session == null
+            ? 0
+            : (int)((double)(session.TotalBytes - session.RemainingBytes) / session.TotalBytes * 100)
+    ;
+    }
+
+    EventState GetTorrentState(string TorrentFilepath)
+    {
+        var session = TorrentSessionManager.GetSession(TorrentFilepath);
+        return session == null ? EventState.None : session.CurrentEvent;
+    }
+
+
+    void Start(string TorrentFilepath)
+    {
+        if (string.IsNullOrEmpty(TorrentFilepath)) return;
+        // TorrentEngine.StartTorrentEngineSession(selectedFile);
+    }
+
+    void Pause(string TorrentFilepath)
+    {
+        if (string.IsNullOrEmpty(TorrentFilepath)) return;
+        // TODO
+        // AT THE TIME OF WRITING, THIS IS NOT A REAL TORRENT ENGINE FUNCTIONALITY
+        // TorrentEngine.PauseTorrentEngineSession(selectedFile);
+    }
+
+    void Cancel(string TorrentFilepath)
+    {
+        if (string.IsNullOrEmpty(TorrentFilepath)) return;
+        // TorrentEngine.CancelTorrentEngineSession(selectedFile);
+    }
+}

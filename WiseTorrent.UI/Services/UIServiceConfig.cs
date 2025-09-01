@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using WiseTorrent.Core.Classes;
+using WiseTorrent.Core.Interfaces;
 
 namespace WiseTorrent.UI.Services
 {
@@ -10,6 +12,7 @@ namespace WiseTorrent.UI.Services
             services.AddTransient<IFilePickerService, FilePickerService>();
             services.AddScoped<UIStateService>();
             services.AddSingleton<NotificationService>();
+            services.AddSingleton<ITorrentSessionManager, TorrentSessionManager>();
         }
     }
 }
