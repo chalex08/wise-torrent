@@ -1,4 +1,5 @@
 ﻿using WiseTorrent.Peers.Interfaces;
+using WiseTorrent.Pieces.Classes;
 using WiseTorrent.Pieces.Interfaces;
 using WiseTorrent.Utilities.Interfaces;
 using WiseTorrent.Utilities.Types;
@@ -14,8 +15,8 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		private readonly Func<int, IPieceManager> _pieceManagerFactory;
 		private IPieceManager? _pieceManager;
 		private PeerMessageHandler? _peerMessageHandler;
-		private readonly List<IPeerChildServiceTaskClient> _childServiceTaskClients;
-		private readonly List<IPeerSiblingServiceTaskClient> _siblingServiceTaskClients;
+		private readonly IEnumerable<IPeerChildServiceTaskClient> _childServiceTaskClients;
+		private readonly IEnumerable<IPeerSiblingServiceTaskClient> _siblingServiceTaskClients;
 		private CancellationToken CToken { get; set; }
 
 		private readonly List<(string, SemaphoreSlim)> _childSemaphoreSlims = new()
@@ -33,7 +34,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		public PeerServiceTaskClient(
 			IPeerManager peerManager, Func<int, IPieceManager> pieceManagerFactory,
 			ILogger<PeerServiceTaskClient> logger, ILogger<PeerConnector> peerConnectorLogger, ILogger<PeerMessageHandler> peerMessageHandlerLogger,
-			List<IPeerChildServiceTaskClient> childServiceTaskClients, List<IPeerSiblingServiceTaskClient> siblingServiceTaskClients)
+			IEnumerable<IPeerChildServiceTaskClient> childServiceTaskClients, IEnumerable<IPeerSiblingServiceTaskClient> siblingServiceTaskClients)
 		{
 			_peerManager = peerManager;
 			_pieceManagerFactory = pieceManagerFactory;
@@ -47,16 +48,27 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		public async Task StartServiceTask(TorrentSession torrentSession, CancellationToken cToken)
 		{
 			CToken = cToken;
-			_pieceManager = _pieceManagerFactory(torrentSession.Info.PieceHashes.Length);
-			_peerMessageHandler = new PeerMessageHandler(_peerMessageHandlerLogger, torrentSession, _peerManager, _pieceManager);
+			if (torrentSession.PieceManagerSnapshot != null)
+			{
+				_pieceManager = PieceManager.RestoreFromSnapshot(torrentSession.PieceManagerSnapshot);
+			}
+			else
+			{
+				_pieceManager = _pieceManagerFactory(torrentSession.Info.PieceHashes.Length);
+			}
 
-			InitialisePieces(torrentSession);
-			_logger.Info("Initialised pieces");
+			_peerMessageHandler = new PeerMessageHandler(_peerMessageHandlerLogger, torrentSession, _peerManager, _pieceManager);
 
 			_logger.Info("Peer initialisation started");
 			_peerManager.PieceManager = _pieceManager;
 			await _peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken);
 			_logger.Info("Connected to peers");
+
+			if (torrentSession.Pieces.Count == 0)
+			{
+				InitialisePieces(torrentSession);
+			}
+			_logger.Info("Initialised pieces");
 
 			InitialiseServiceTaskClients(torrentSession);
 			
@@ -72,11 +84,21 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			_logger.Info("Subscribed to events");
 
 			_logger.Info("Peer service task started");
+			var pieceCount = torrentSession.Info.PieceHashes.Length;
 			while (!CToken.IsCancellationRequested)
 			{
 				try
 				{
 					await Task.Delay(5000, CToken);
+					var completion = (torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount);
+					_logger.Warn($"[Status Update] Torrent is {completion:F4}% complete");
+
+					if (torrentSession.ConnectedPeers.Count == 0)
+					{
+						var now = DateTime.UtcNow;
+						var retryPeers = torrentSession.AllPeers.Where(p => p.ProtocolStage == PeerProtocolStage.AwaitingHandshake && now - p.LastConnectAttempt >= TimeSpan.FromSeconds(60));
+						if (retryPeers.Any()) await _peerManager.ConnectToAllPeersAsync(retryPeers, CToken);
+					}
 				}
 				catch (Exception ex)
 				{
@@ -87,6 +109,12 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			_logger.Info("Stopping peer child service tasks");
 			await StopAllPeerServiceTasks(torrentSession);
 
+			if (torrentSession.ShouldSnapshotOnShutdown)
+			{
+				torrentSession.OnPieceManagerSnapshotted.NotifyListeners(_pieceManager.CreateSnapshot());
+				_logger.Info("Peer service task snapshotted piece manager state");
+			}
+
 			_logger.Info("Peer service task, and all child service tasks, stopped");
 		}
 
@@ -95,7 +123,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			var index = 0;
 			foreach (var pieceHash in torrentSession.Info.PieceHashes)
 			{
-				torrentSession.Pieces.Add(new Piece(index++, pieceHash, _peerManager.GetPieceLength(index)));
+				torrentSession.Pieces.Add(new Piece(index, pieceHash, _peerManager.GetPieceLength(index++)));
 			}
 		}
 
@@ -118,36 +146,43 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 		{
 			foreach (var peer in torrentSession.AllPeers)
 			{
+				if (torrentSession.PeerTasks.ContainsKey(peer))
+				{
+					_logger.Info($"[CreatePeerTaskBundles] Skipping duplicate task creation for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
+					continue;
+				}
+
 				var clientIterator = 0;
-				var peerCTS = CancellationTokenSource.CreateLinkedTokenSource(CToken);
+				var peerCTS = new CancellationTokenSource();
 				var bundle = new PeerTaskBundle(
 					_childServiceTaskClients.Select(client =>
 					{
 						var namedSemaphoreSlim = _childSemaphoreSlims[clientIterator++];
 						return SafeRun(() => client.StartServiceTask(peer, peerCTS.Token), namedSemaphoreSlim.Item1, namedSemaphoreSlim.Item2, peer);
-					}),
+					}).ToList(),
 					peerCTS
 				);
 
-				torrentSession.PeerTasks[peer] = bundle;
+				torrentSession.PeerTasks.TryAdd(peer, bundle);
 			}
 		}
 
 		private void StartPeerSiblingTasks(TorrentSession torrentSession)
 		{
 			var clientIterator = 0;
-			_siblingServiceTaskClients.ForEach(client =>
+			foreach (var client in _siblingServiceTaskClients)
 			{
 				var namedSemaphoreSlim = _siblingSemaphoreSlims[clientIterator++];
 				SafeRun(() => client.StartServiceTask(CToken), namedSemaphoreSlim.Item1, namedSemaphoreSlim.Item2);
-			});
+			}
 		}
 
 		private void SubscribeToEvents(TorrentSession torrentSession)
 		{
 			torrentSession.OnTrackerResponse.Subscribe(peers =>
 			{
-				List<Peer> newPeers = peers.Where(p => !torrentSession.AllPeers.Contains(p)).ToList();
+				var newPeers = new ConcurrentSet<Peer>();
+				newPeers.AddRange(torrentSession.AllPeers.Where(p => !peers.Contains(p)));
 				torrentSession.AllPeers.AddRange(newPeers);
 				_peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken, newPeers);
 			});
@@ -176,11 +211,17 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				await semaphore.WaitAsync();
 				try
 				{
+					var taskId = Guid.NewGuid().ToString("N").Substring(0, 8);
+					var peerLabel = peer == null
+						? "s"
+						: " " + (peer.PeerID ?? peer.IPEndPoint.ToString());
+					_logger.Info($"[SafeRun] Starting {taskName} for peer{peerLabel} [Task {taskId}]");
 					await taskFunc();
+					_logger.Info($"[SafeRun] Finished {taskName} for peer{peerLabel}");
 				}
 				catch (Exception ex)
 				{
-					if (peer != null) _logger.Error($"Peer {peer.PeerID} {taskName} failed", ex);
+					if (peer != null) _logger.Error($"Peer {peer.PeerID ?? peer.IPEndPoint.ToString()} {taskName} failed", ex);
 					else _logger.Error($"{taskName} for all peers failed", ex);
 				}
 				finally

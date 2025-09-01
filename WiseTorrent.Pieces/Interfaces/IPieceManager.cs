@@ -1,4 +1,6 @@
-﻿namespace WiseTorrent.Pieces.Interfaces
+﻿using WiseTorrent.Utilities.Types;
+
+namespace WiseTorrent.Pieces.Interfaces
 {
 	public interface IPieceManager
 	{
@@ -8,5 +10,8 @@
 		void UpdatePieceRarityFromPeer(HashSet<int> peerPieces);
 		void RemovePeerFromRarity(HashSet<int> peerPieces);
 		IEnumerable<int> GetRarestPieces(IEnumerable<int> candidates);
+		IEnumerable<int> GetRarePieces(IEnumerable<int> candidates);
+		bool HasAllPieces();
+		PieceManagerSnapshot CreateSnapshot();
 	}
 }

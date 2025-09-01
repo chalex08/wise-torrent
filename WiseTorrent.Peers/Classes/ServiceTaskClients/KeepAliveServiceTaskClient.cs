@@ -25,15 +25,15 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				try
 				{
 					var interval = TimeSpan.FromSeconds(SessionConfig.PeerKeepAliveIntervalSeconds);
+					await Task.Delay(interval, pCToken); // has to be refreshable upon LastActive update
+
 					var idleTime = DateTime.UtcNow - peer.LastActive;
 
 					if (idleTime > interval)
 					{
 						PeerManager!.TryQueueMessage(peer, PeerMessage.CreateKeepAlive());
-						_logger.Info($"Keep alive sent to {peer.PeerID} after {idleTime.TotalSeconds:F1}s idle");
+						_logger.Info($"Keep alive sent to {peer.PeerID ?? peer.IPEndPoint.ToString()} after {idleTime.TotalSeconds:F1}s idle");
 					}
-
-					await Task.Delay(interval, pCToken); // has to be refreshable upon LastActive update
 				}
 				catch (Exception ex)
 				{

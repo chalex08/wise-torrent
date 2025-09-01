@@ -47,12 +47,12 @@ namespace WiseTorrent.Parsing.Classes
 			return _rawDict.TryGetValue(key, out var obj) ? obj.ToString() : null;
 		}
 
-		private List<Peer>? ParseNonCompactPeers()
+		private ConcurrentSet<Peer>? ParseNonCompactPeers()
 		{
 			if (!_rawDict.TryGetValue("peers", out var obj) || obj is not BList peerList)
 				return null;
 
-			var peers = new List<Peer>(peerList.Count);
+			var peers = new ConcurrentSet<Peer>();
 			foreach (var item in peerList)
 			{
 				if (item is not BDictionary peerDict)

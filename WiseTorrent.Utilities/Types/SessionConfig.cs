@@ -5,21 +5,27 @@ namespace WiseTorrent.Utilities.Types
 {
 	public static class SessionConfig
 	{
-		public static IPEndPoint LocalIpEndpoint => new(Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork), 6881);
-		public static int PeerTimeoutSeconds => 300;
-		public static int PeerKeepAliveIntervalSeconds => 300;
-		public static TimeSpan PeerStateRefreshTimerSeconds => TimeSpan.FromSeconds(30);
-		public static TimeSpan PeerReconnectCooldownSeconds => TimeSpan.FromSeconds(30);
-		public static int MaxSwarmSize => 50;
-		public static int MaxPeerConnectionThreads => (int)(0.2 * MaxSwarmSize);
-		public static int MaxPeerReceiveThreads => (int)(1.0 * MaxSwarmSize);
-		public static int MaxPeerSendThreads => (int)(1.5 * MaxSwarmSize);
-		public static int MaxPeerKeepAliveThreads => (int)(0.4 * MaxSwarmSize);
-		public static int MaxPeerUpdateStateThreads => (int)(0.6 * MaxSwarmSize);
-		public static int MaxOutboundMessageQueueSize => 1_000;
-		public static int BlockSizeBytes => 16_384;
-		public static int MaxRequestsPerPeer => 32;
-		public static int MaxRequestsPerPiece => 5;
-		public static int MaxActivePieces => 16;
+		public static string TorrentStoragePath { get; set; } = "C:\\Users\\Alex.Chen\\Downloads";
+		public static IPEndPoint LocalIpEndpoint { get; set; } = new(Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork), 6881);
+		public static int PeerTimeoutSeconds { get; set; } = 300;
+		public static int PeerKeepAliveIntervalSeconds { get; set; } = 300;
+		public static TimeSpan PeerStateRefreshTimerSeconds { get; set; } = TimeSpan.FromSeconds(120);
+		public static TimeSpan PeerReconnectCooldownSeconds { get; set; } = TimeSpan.FromSeconds(30);
+		public static int MaxSwarmSize { get; set; } = 50;
+		public static int MaxPeerConnectionThreads { get; set; } = (int)(0.2 * MaxSwarmSize);
+		public static int MaxPeerReceiveThreads { get; set; } = (int)(1.0 * MaxSwarmSize);
+		public static int MaxPeerSendThreads { get; set; } = (int)(1.5 * MaxSwarmSize);
+		public static int MaxPeerKeepAliveThreads { get; set; } = (int)(0.4 * MaxSwarmSize);
+		public static int MaxPeerUpdateStateThreads { get; set; } = (int)(0.6 * MaxSwarmSize);
+		public static int MaxOutboundMessageQueueSize { get; set; } = 1_000;
+		public static int BlockSizeBytes { get; set; } = 16_384;
+		public static int MaxRequestsPerPeer { get; set; } = 32;
+		public static int MaxRequestsPerPiece { get; set; } = 5;
+		public static int MaxActivePieces { get; set; } = 16;
+		public static int PieceRarityThreshold { get; set; } = 5;
+		public static TimeSpan PieceRequestTimeoutLimitSeconds { get; set; } = TimeSpan.FromSeconds(5);
+		public static int MaxLogEntriesCount { get; set; } = 1000;
+		public static int LogRefreshThreshold { get; set; } = 10;
+		public static TimeSpan LogRefreshIntervalSeconds { get; set; } = TimeSpan.FromSeconds(1);
 	}
 }

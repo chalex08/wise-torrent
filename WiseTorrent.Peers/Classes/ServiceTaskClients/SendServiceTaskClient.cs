@@ -24,22 +24,27 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			{
 				while (!pCToken.IsCancellationRequested)
 				{
+					await Task.Delay(1, pCToken);
+
 					var message = await TorrentSession.OutboundMessageQueues[peer].DequeueAsync(pCToken);
 					if (message == null) continue;
 
 					var bytes = message.ToBytes();
-					await PeerManager.SendPeerMessageAsync(peer, bytes, pCToken);
+					var logStr = $"{(message.HandshakeMessage == null ? message.MessageType : "Handshake")} to peer (Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()})";
+					_logger.Info($"Sending {logStr}");
+					if (await PeerManager.SendPeerMessageAsync(peer, bytes, pCToken)) _logger.Info($"Successfully sent {logStr}");
+					else _logger.Warn($"Failed to send {logStr}");
 
 					peer.LastActive = DateTime.UtcNow;
 				}
 			}
 			catch (OperationCanceledException)
 			{
-				_logger.Info($"Send loop cancelled for peer {peer.PeerID}");
+				_logger.Info($"Send loop cancelled for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
 			}
 			catch (Exception ex)
 			{
-				_logger.Warn($"Send loop error for peer {peer.PeerID}: {ex.Message}");
+				_logger.Warn($"Send loop error for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}: {ex.Message}");
 			}
 
 		}

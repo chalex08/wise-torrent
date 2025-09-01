@@ -20,25 +20,35 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			if (TorrentSession == null || PeerManager == null)
 				throw new InvalidOperationException("Dependencies not set");
 
+			await ReceiveHandshakeMessage(peer, pCToken);
+
 			while (!pCToken.IsCancellationRequested)
 			{
+				await Task.Delay(1, pCToken);
 				byte[] receivedBytes = await PeerManager!.ReceivePeerMessageAsync(peer, pCToken);
-				if (receivedBytes.Length > 0)
+				var message = PeerMessage.FromBytes(receivedBytes);
+				if (message != null)
 				{
-					var message = PeerMessage.FromBytes(receivedBytes);
-					if (message != null)
-					{
-						peer.LastReceived = DateTime.UtcNow;
-						TorrentSession?.OnPeerMessageReceived.NotifyListeners((peer, message));
-					}
-				}
-				else
-				{
-					_logger.Warn($"Peer {peer.PeerID} disconnected (received 0 bytes)");
-					await PeerManager!.DisconnectPeerAsync(peer, pCToken);
-					break;
+					peer.LastReceived = DateTime.UtcNow;
+					TorrentSession?.OnPeerMessageReceived.NotifyListeners((peer, message));
 				}
 			}
+		}
+
+		private async Task ReceiveHandshakeMessage(Peer peer, CancellationToken pCToken)
+		{
+			byte[] handshakeBytes = await PeerManager!.ReceiveHandshakeAsync(peer, pCToken);
+			var handshake = HandshakeMessage.FromBytes(handshakeBytes);
+			if (handshake == null)
+			{
+				_logger.Warn($"Invalid handshake from {peer.IPEndPoint}");
+				await PeerManager!.DisconnectPeerAsync(peer, pCToken);
+				return;
+			}
+
+			peer.PeerID = handshake.PeerId;
+			peer.LastReceived = DateTime.UtcNow;
+			TorrentSession?.OnPeerMessageReceived.NotifyListeners((peer, new PeerMessage(handshake)));
 		}
 	}
 }
