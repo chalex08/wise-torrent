@@ -70,6 +70,7 @@ namespace WiseTorrent.Peers.Classes
 				await _peerConnectors[peer].InitiateHandshakeAsync(cToken);
 				peer.ResetDecay();
 				peer.LastConnectAttempt = DateTime.UtcNow;
+				_torrentSession.AwaitingHandshakePeers.Add(peer);
 			}
 			catch (OperationCanceledException)
 			{

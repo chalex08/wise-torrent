@@ -27,6 +27,10 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 					await Task.Delay(SessionConfig.PieceRequestTimeoutLimitSeconds, pCToken);
 					CheckAndRecoverStaleRequests(peer, pCToken);
 				}
+				catch (OperationCanceledException)
+				{
+					_logger.Error($"Request monitor cancelled for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
+				}
 				catch (Exception ex)
 				{
 					_logger.Error("Peer request monitor service loop encountered error", ex);

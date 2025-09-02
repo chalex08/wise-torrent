@@ -28,18 +28,18 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var TorrentFilepath in UIStateService.TorrentFilepaths)
+        @foreach (var TorrentFilePath in UIStateService.TorrentFilepaths)
         {
-            var progress = GetProgressPercent(TorrentFilepath);
-            var state = GetTorrentState(TorrentFilepath);
+            var progress = GetProgressPercent(TorrentFilePath);
+            var state = GetTorrentState(TorrentFilePath);
 
             <tr class="torrent-row">
-                <td>@TorrentFilepath</td>
+                <td>@TorrentFilePath</td>
                 <td>
                     <div class="d-flex align-items-center">
                         <div class="progress flex-grow-1" style="height: 0.75rem;">
                             <div class="progress-bar" role="progressbar" style="width:@progress%"
-                                aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100">
+                            aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                         <span class="ms-2">@progress%</span>
@@ -52,19 +52,19 @@
                     @if (state == EventState.Started)
                     {
                         <button class="btn btn-outline-warning"
-                                @onclick="() => Pause(TorrentFilepath)">
+                                @onclick="() => Pause(TorrentFilePath)">
                             <i class="bi bi-pause-fill"></i>
                         </button>
                     }
                     else
                     {
                         <button class="btn btn-outline-success"
-                                @onclick="() => Start(TorrentFilepath)">
+                                @onclick="() => Start(TorrentFilePath)">
                             <i class="bi bi-play-fill"></i>
                         </button>
                     }
                     <button class="btn btn-outline-danger"
-                            @onclick="() => Cancel(TorrentFilepath)">
+                            @onclick="() => Cancel(TorrentFilePath)">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </td>
@@ -74,23 +74,22 @@
 </table>
 
 @code {
-    int GetProgressPercent(string TorrentFilepath)
+    int GetProgressPercent(string TorrentFilePath)
     {
-        var session = TorrentSessionManager.GetSession(TorrentFilepath);
+        var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
         return session == null
             ? 0
-            : (int)(1 - (session.RemainingBytes / session.TotalBytes))
-    ;
+            : (int)(((session.TotalBytes - session.RemainingBytes) / session.TotalBytes) * 100);
     }
 
-    EventState GetTorrentState(string TorrentFilepath)
+    EventState GetTorrentState(string TorrentFilePath)
     {
-        var session = TorrentSessionManager.GetSession(TorrentFilepath);
+        var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
         if (session != null)
             return session.CurrentEvent;
 
         // If it exists in the UI but has no active session → it's paused/queued
-        if (UIStateService.TorrentFilepaths.Contains(TorrentFilepath))
+        if (UIStateService.TorrentFilepaths.Contains(TorrentFilePath))
             return EventState.Stopped;
 
         return EventState.None; // Never added
@@ -100,29 +99,30 @@
     {
         var selectedFile = FilePickerService.PickFile();
         if (selectedFile == null) return;
-        UIStateService.TorrentFilepaths.Add(selectedFile);
+        var torrentName = Path.GetFileNameWithoutExtension(selectedFile);
+        UIStateService.TorrentFilepaths.Add(torrentName);
     }
 
 
-    void Start(string TorrentFilepath)
+    void Start(string TorrentFilePath)
     {
-        if (string.IsNullOrEmpty(TorrentFilepath)) return;
-        TorrentEngine.StartTorrentEngineSession(TorrentFilepath);
+        if (string.IsNullOrEmpty(TorrentFilePath)) return;
+        TorrentEngine.StartTorrentEngineSession(TorrentFilePath);
         InvokeAsync(StateHasChanged);
     }
 
-    async Task Pause(string TorrentFilepath)
+    async Task Pause(string TorrentFilePath)
     {
-        if (string.IsNullOrEmpty(TorrentFilepath)) return;
-        await TorrentEngine.PauseTorrentEngineSession(TorrentFilepath);
+        if (string.IsNullOrEmpty(TorrentFilePath)) return;
+        await TorrentEngine.PauseTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
         await InvokeAsync(StateHasChanged);
     }
 
-    async Task Cancel(string TorrentFilepath)
+    async Task Cancel(string TorrentFilePath)
     {
-        if (string.IsNullOrEmpty(TorrentFilepath)) return;
-        await TorrentEngine.CancelTorrentEngineSession(TorrentFilepath);
-        UIStateService.TorrentFilepaths.Remove(TorrentFilepath);
+        if (string.IsNullOrEmpty(TorrentFilePath)) return;
+        await TorrentEngine.CancelTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        UIStateService.TorrentFilepaths.Remove(TorrentFilePath);
         await InvokeAsync(StateHasChanged);
     }
 }

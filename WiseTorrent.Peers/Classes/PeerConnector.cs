@@ -91,13 +91,12 @@ namespace WiseTorrent.Peers.Classes
 			try
 			{
 				await _stream.WriteAsync(data, 0, data.Length, cToken);
-				TorrentSession.Metrics.RecordSend(data.Length);
-				Peer.Metrics.RecordSend(data.Length);
 				Peer.LastActive = DateTime.UtcNow;
 				return true;
 			}
-			catch
+			catch (Exception ex)
 			{
+				_logger.Error($"Failed to send message to peer (PeerID: {Peer.PeerID ?? Peer.IPEndPoint.ToString()})", ex);
 				return false;
 			}
 		}

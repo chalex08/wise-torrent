@@ -87,5 +87,63 @@ namespace WiseTorrent.Storage.Classes
 				_logger.Error($"Unsuccessful write to disk for block (Piece Index, Block Offset: {block.PieceIndex}, {block.Offset})", ex);
 			}
 		}
+
+		public async Task<byte[]> ReadBlockAsync(Block block, FileMap fileMap, CancellationToken cancellationToken)
+		{
+			try
+			{
+				var segments = fileMap.Resolve(block.PieceIndex);
+				var buffer = new byte[block.Length];
+
+				int blockRemaining = block.Length;
+				int bufferOffset = 0;
+				long pieceRelativeOffset = 0;
+
+				foreach (var segment in segments)
+				{
+					if (pieceRelativeOffset + segment.Length <= block.Offset)
+					{
+						pieceRelativeOffset += segment.Length;
+						continue; // Segment is before block offset
+					}
+
+					if (blockRemaining <= 0)
+						break;
+
+					long segmentOffsetWithinPiece = Math.Max(block.Offset - pieceRelativeOffset, 0);
+					long readStartInFile = segment.Offset + segmentOffsetWithinPiece;
+
+					int readLength = (int)Math.Min(
+						segment.Length - segmentOffsetWithinPiece,
+						blockRemaining);
+
+					int bytesRead = await _fileIO.ReadAsync(
+						segment.FilePath,
+						buffer,
+						readStartInFile,
+						readLength,
+						cancellationToken);
+
+					if (bytesRead < readLength)
+						_logger.Warn($"Partial read detected (Piece Index: {block.PieceIndex}, Offset: {block.Offset}, Expected: {readLength}, Actual: {bytesRead})");
+
+					blockRemaining -= bytesRead;
+					bufferOffset += bytesRead;
+					pieceRelativeOffset += readLength;
+				}
+
+				return buffer;
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.Info($"Read cancelled for block (Piece Index: {block.PieceIndex}, Offset: {block.Offset})");
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error($"Failed to read block (Piece Index: {block.PieceIndex}, Offset: {block.Offset})", ex);
+				throw;
+			}
+		}
 	}
 }

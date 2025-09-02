@@ -25,6 +25,7 @@ namespace WiseTorrent.Utilities.Types
 		public ServerURL CurrentTrackerUrl => TrackerUrls[CurrentTrackerUrlIndex];
 		public ConcurrentSet<Peer> AllPeers { get; set; } = new();
 		public ConcurrentSet<Peer> ConnectedPeers { get; set; } = new();
+		public ConcurrentSet<Peer> AwaitingHandshakePeers { get; set; } = new();
 		public ConcurrentDictionary<Peer, PeerTaskBundle> PeerTasks { get; set; } = new();
 		public ConcurrentDictionary<Peer, OutboundMessageQueue> OutboundMessageQueues { get; set; } = new();
 		public ConcurrentSet<Piece> Pieces { get; set; } = new();
@@ -36,6 +37,7 @@ namespace WiseTorrent.Utilities.Types
 		public int TrackerIntervalSeconds { get; set; }
 
 		public SessionEvent<ConcurrentSet<Peer>> OnTrackerResponse = new();
+		public SessionEvent<ConcurrentSet<Peer>> OnTrackerResponseHandled = new();
 		public SessionEvent<(Peer, PeerMessage)> OnPeerMessageReceived = new();
 		public SessionEvent<(Peer, Block)> OnBlockRequestReceived = new();
 		public SessionEvent<(Peer, Block)> OnBlockReadFromDisk = new();
@@ -45,6 +47,7 @@ namespace WiseTorrent.Utilities.Types
 		public SessionEvent<bool> OnPiecesFlushed = new();
 		public SessionEvent<PieceManagerSnapshot> OnPieceManagerSnapshotted = new();
 		public SessionEvent<bool> OnFileCompleted = new();
+		public SessionEvent<bool> OnBytesDownloaded = new();
 
 		public bool ShouldFlushOnShutdown = false;
 		public bool ShouldSnapshotOnShutdown = false;
