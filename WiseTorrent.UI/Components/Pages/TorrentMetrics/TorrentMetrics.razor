@@ -1,0 +1,101 @@
+﻿@page "/torrentMetrics"
+
+@using WiseTorrent.Core.Interfaces
+@using WiseTorrent.UI.Services
+@using WiseTorrent.Utilities.Types
+@using System.IO
+
+@inject UIStateService UIStateService
+@inject IFilePickerService FilePickerService
+@inject ITorrentEngine TorrentEngine
+@inject ITorrentSessionManager TorrentSessionManager
+@inject NotificationService NotificationService
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>Torrent Metrics</h1>
+
+<div class="d-flex" style="gap: 1rem; height: 100%;">
+    <!-- Torrent List -->
+    <div class="torrent-list flex-shrink-0">
+        <h3 class="mb-3">Active Torrents</h3>
+        @if (_activeSessions == null || !_activeSessions.Any())
+        {
+            <div class="text-muted">No active torrents.</div>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var session in _activeSessions)
+                {
+                    <li class="list-group-item torrent-item @(session == _selectedSession ? "active" : "")"
+                        @onclick="() => SelectTorrent(session)">
+                        @session.Info.Name
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <!-- Torrent Stats Widget -->
+    <div class="flex-grow-1">
+        <h3 class="mb-3">Details</h3>
+        @if (_selectedSession == null)
+        {
+            <div class="text-muted">Select a torrent to view its stats.</div>
+        }
+        else
+        {
+            var snapshot = _snapshots.ContainsKey(_selectedSession) ? _snapshots[_selectedSession] : null;
+
+            <div class="card shadow-lg border-0 rounded-3">
+                <div class="card-body">
+                    <h4 class="card-title">@_selectedSession.Info.Name</h4>
+                    <div class="stats-grid">
+                        <div><strong>Download:</strong> @(snapshot?.DownloadRate / 1024 ?? 0) KB/s</div>
+                        <div><strong>Upload:</strong> @(snapshot?.UploadRate / 1024 ?? 0) KB/s</div>
+                        <div><strong>Messages Sent:</strong> @(snapshot?.MessagesSent ?? 0)</div>
+                        <div><strong>Messages Received:</strong> @(snapshot?.MessagesReceived ?? 0)</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<TorrentSession> _activeSessions = new();
+    private Dictionary<TorrentSession, TorrentMetricsSnapshot> _snapshots = new();
+    private TorrentSession? _selectedSession;
+    private Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _activeSessions = TorrentSessionManager.AllSessions.ToList();
+        if (_activeSessions.Any())
+            _selectedSession = _activeSessions.First();
+
+        _timer = new Timer(UpdateMetrics, null, TimeSpan.Zero, TimeSpan.FromSeconds(15));
+    }
+
+    private void UpdateMetrics(object? state)
+    {
+        foreach (var session in _activeSessions)
+        {
+            session.Metrics.RefreshRates();
+            _snapshots[session] = session.Metrics.GetSnapshot();
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SelectTorrent(TorrentSession session)
+    {
+        _selectedSession = session;
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}
