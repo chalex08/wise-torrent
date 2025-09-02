@@ -15,50 +15,52 @@
 
 <h1>Torrent Metrics</h1>
 
-<div class="d-flex" style="gap: 1rem; height: 100%;">
+<div class="d-flex gap-4" style="height: 70vh;">
     <!-- Torrent List -->
-    <div class="torrent-list flex-shrink-0">
-        <h3 class="mb-3">Active Torrents</h3>
-        @if (_activeSessions == null || !_activeSessions.Any())
-        {
-            <div class="text-muted">No active torrents.</div>
-        }
-        else
-        {
-            <ul class="list-group">
+    <div class="flex-shrink-0" style="width: 300px; overflow-y: auto;">
+        <table class="table table-modern table-hover">
+            <thead>
+                <tr>
+                    <th>Torrent</th>
+                </tr>
+            </thead>
+            <tbody>
                 @foreach (var session in _activeSessions)
                 {
-                    <li class="list-group-item torrent-item @(session == _selectedSession ? "active" : "")"
-                        @onclick="() => SelectTorrent(session)">
-                        @session.Info.Name
-                    </li>
+                    <tr class="torrent-row @(session == _selectedSession ? "table-primary" : "")"
+                        @onclick="() => SelectTorrent(session)"
+                        style="cursor: pointer;">
+                        <td>@session.Info.Name</td>
+                    </tr>
                 }
-            </ul>
-        }
+            </tbody>
+        </table>
     </div>
 
-    <!-- Torrent Stats Widget -->
-    <div class="flex-grow-1">
-        <h3 class="mb-3">Details</h3>
-        @if (_selectedSession == null)
+    <!-- Torrent Metrics Widget -->
+    <div class="flex-grow-1 border rounded p-3" style="background-color: #f8f9fa;">
+        @if (_selectedSession != null)
         {
-            <div class="text-muted">Select a torrent to view its stats.</div>
+            <h4>Metrics for @_selectedSession.Info.Name</h4>
+            var snapshot = _selectedSession.Metrics.GetSnapshot();
+            <div class="row">
+                <div class="col-6">
+                    <strong>Download Rate:</strong> @(snapshot.DownloadRate / 1024) KB/s
+                </div>
+                <div class="col-6">
+                    <strong>Upload Rate:</strong> @(snapshot.UploadRate / 1024) KB/s
+                </div>
+                <div class="col-6">
+                    <strong>Messages Sent:</strong> @snapshot.MessagesSent
+                </div>
+                <div class="col-6">
+                    <strong>Messages Received:</strong> @snapshot.MessagesReceived
+                </div>
+            </div>
         }
         else
         {
-            var snapshot = _snapshots.ContainsKey(_selectedSession) ? _snapshots[_selectedSession] : null;
-
-            <div class="card shadow-lg border-0 rounded-3">
-                <div class="card-body">
-                    <h4 class="card-title">@_selectedSession.Info.Name</h4>
-                    <div class="stats-grid">
-                        <div><strong>Download:</strong> @(snapshot?.DownloadRate / 1024 ?? 0) KB/s</div>
-                        <div><strong>Upload:</strong> @(snapshot?.UploadRate / 1024 ?? 0) KB/s</div>
-                        <div><strong>Messages Sent:</strong> @(snapshot?.MessagesSent ?? 0)</div>
-                        <div><strong>Messages Received:</strong> @(snapshot?.MessagesReceived ?? 0)</div>
-                    </div>
-                </div>
-            </div>
+            <p class="text-muted">Select a torrent to view its metrics</p>
         }
     </div>
 </div>

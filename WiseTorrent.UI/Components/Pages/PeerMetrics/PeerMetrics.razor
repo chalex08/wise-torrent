@@ -20,7 +20,7 @@
             <tbody>
                 @foreach (var peer in ActivePeers)
                 {
-                    <tr class="peer-row @(peer == SelectedPeer ? "table-primary" : "")"
+                    <tr class="torrent-row @(peer == SelectedPeer ? "table-primary" : "")"
                         @onclick="() => SelectPeer(peer)"
                         style="cursor: pointer;">
                         <td>@peer.IPEndPoint - @peer.PeerID</td>
