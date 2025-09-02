@@ -1,0 +1,98 @@
+﻿@page "/peerMetrics"
+@using WiseTorrent.Core.Interfaces
+@using WiseTorrent.UI.Services
+@using WiseTorrent.Utilities.Types
+@inject ITorrentSessionManager TorrentSessionManager
+
+<PageTitle>Peer Metrics</PageTitle>
+
+<h1>Peer Metrics</h1>
+
+<div class="d-flex gap-4" style="height: 70vh;">
+    <!-- Peer List -->
+    <div class="flex-shrink-0" style="width: 300px; overflow-y: auto;">
+        <table class="table table-modern table-hover">
+            <thead>
+                <tr>
+                    <th>Peer</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var peer in ActivePeers)
+                {
+                    <tr class="peer-row @(peer == SelectedPeer ? "table-primary" : "")"
+                        @onclick="() => SelectPeer(peer)"
+                        style="cursor: pointer;">
+                        <td>@peer.IPEndPoint - @peer.PeerID</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Metrics Widget -->
+    <div class="flex-grow-1 border rounded p-3" style="background-color: #f8f9fa;">
+        @if (SelectedPeer != null)
+        {
+            <h4>Metrics for @SelectedPeer.PeerID</h4>
+            <div class="row">
+                <div class="col-6">
+                    <strong>Download Rate:</strong> @SelectedPeer.Metrics.GetSnapshot().DownloadRate /s
+                </div>
+                <div class="col-6">
+                    <strong>Upload Rate:</strong> @SelectedPeer.Metrics.GetSnapshot().UploadRate /s
+                </div>
+                <div class="col-6">
+                    <strong>Average Response Time:</strong> @SelectedPeer.Metrics.GetSnapshot().AverageResponseTime.TotalMilliseconds ms
+                </div>
+                <div class="col-6">
+                    <strong>Messages Sent:</strong> @SelectedPeer.Metrics.GetSnapshot().MessagesSent
+                </div>
+                <div class="col-6">
+                    <strong>Messages Received:</strong> @SelectedPeer.Metrics.GetSnapshot().MessagesReceived
+                </div>
+                <div class="col-6">
+                    <strong>Pending Requests:</strong> @SelectedPeer.Metrics.GetSnapshot().PendingRequests
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">Select a peer to view its metrics</p>
+        }
+    </div>
+</div>
+
+@code {
+    private TorrentSession? ActiveSession => TorrentSessionManager.AllSessions.FirstOrDefault();
+    private List<Peer> ActivePeers => ActiveSession?.ConnectedPeers.ToList() ?? new();
+    private Peer? SelectedPeer;
+
+    private void SelectPeer(Peer peer)
+    {
+        SelectedPeer = peer;
+    }
+
+    // Polling every 15 seconds
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await InvokeAsync(() =>
+                    {
+                        foreach (var peer in ActivePeers)
+                        {
+                            peer.Metrics.RefreshRates();
+                        }
+                        StateHasChanged();
+                    });
+                    await Task.Delay(15000);
+                }
+            });
+        }
+    }
+}
