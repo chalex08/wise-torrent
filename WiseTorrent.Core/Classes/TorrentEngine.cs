@@ -30,9 +30,9 @@ namespace WiseTorrent.Core.Classes
 			_storageServiceTaskClient = storageServiceTaskClient;
 		}
 
-		public async Task CancelTorrentEngineSession(string filePath)
+		public async Task CancelTorrentEngineSession(string torrentName)
 		{
-			var torrentSession = _torrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(filePath));
+			var torrentSession = _torrentSessionManager.GetSession(torrentName);
 			if (torrentSession != null)
 			{
 				_logger.Info($"Cancelling torrent session (Torrent Name: {torrentSession.Info.Name})");
@@ -44,9 +44,9 @@ namespace WiseTorrent.Core.Classes
 			}
 		}
 
-		public async Task PauseTorrentEngineSession(string filePath)
+		public async Task PauseTorrentEngineSession(string torrentName)
 		{
-			var torrentSession = _torrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(filePath));
+			var torrentSession = _torrentSessionManager.GetSession(torrentName);
 			if (torrentSession != null)
 			{
 				_logger.Info($"Pausing torrent session (Torrent Name: {torrentSession.Info.Name})");
@@ -86,7 +86,7 @@ namespace WiseTorrent.Core.Classes
 			}
 			else
 			{
-				_logger.Error($"Failed to pause torrent session (Torrent File Path: {filePath})");
+				_logger.Error($"Failed to pause torrent session (Torrent File Path: {torrentName})");
 			}
 		}
 

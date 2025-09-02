@@ -32,6 +32,13 @@ namespace WiseTorrent.Storage.Classes
 				else
 					_logger.Error($"Failed to queue new block (Piece Index, Block Offset: {block.PieceIndex}, {block.Offset})");
 			});
+			torrentSession.OnBlockRequestReceived.Subscribe(async pb =>
+			{
+				var block = pb.Item2 as Block;
+				var data = await _fileManager.ReadBlockAsync(block, torrentSession.FileMap, CToken);
+				block.Data = data;
+				torrentSession.OnBlockReadFromDisk.NotifyListeners((pb.Item1, block));
+			});
 
 			var fileMap = torrentSession.FileMap;
 

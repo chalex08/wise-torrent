@@ -1,4 +1,4 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿<div class="top-row ps-3 navbar navbar-dark" @onmousedown="DragWindow">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Wise Torrent</a>
     </div>
@@ -15,8 +15,14 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/downloads">
-                <span class="bi bi-cloud-arrow-down nav-menu" aria-hidden="true"></span> Downloads
+            <NavLink class="nav-link" href="/torrentMetrics">
+                <span class="bi bi-cloud-arrow-down nav-menu" aria-hidden="true"></span> Torrent Metrics
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/peerMetrics">
+                <span class="bi bi-people-fill nav-menu" aria-hidden="true"></span> Peer Metrics
             </NavLink>
         </div>
 
@@ -34,3 +40,6 @@
     </nav>
 </div>
 
+@code {
+    void DragWindow() => MainWindow.Instance?.DragWindow();
+}

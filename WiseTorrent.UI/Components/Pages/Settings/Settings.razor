@@ -1,6 +1,182 @@
 ﻿@page "/settings"
 @attribute [StreamRendering]
+@using WiseTorrent.Utilities.Types
+@inject NotificationService NotificationService
 
 <PageTitle>Settings</PageTitle>
 
 <h1>Settings</h1>
+
+<div class="settings-container">
+	<fieldset class="settings-fieldset mb-4">
+		<legend>Storage & Client</legend>
+
+		<div class="form-group mb-3">
+			<label>Torrent storage path</label>
+			<input class="form-control" @bind="TorrentStoragePath" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Local IP endpoint </label>
+			<input class="form-control" value="@SessionConfig.LocalIpEndpoint" readonly />
+		</div>
+	</fieldset>
+
+	<fieldset class="settings-fieldset mb-4">
+		<legend>Peer Settings & Timing</legend>
+
+		<div class="form-group mb-3">
+			<label>Peer timeout</label>
+			<input class="form-control" @bind="PeerTimeout" />
+			<span class="ms-2 text-muted">seconds</span>
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Peer keep-alive interval</label>
+			<input class="form-control" @bind="PeerKeepAliveIntervalSeconds" />
+			<span class="ms-2 text-muted">seconds</span>
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Peer state refresh timer</label>
+			<input class="form-control" @bind="PeerStateRefreshTimerSeconds" />
+			<span class="ms-2 text-muted">seconds</span>
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Peer reconnect cooldown</label>
+			<input class="form-control" @bind="PeerReconnectCooldownSeconds" />
+			<span class="ms-2 text-muted">seconds</span>
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max swarm size</label>
+			<input class="form-control" @bind="MaxSwarmSize" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max peer connection threads</label>
+			<input class="form-control" @bind="MaxPeerConnectionThreads" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max peer receive threads</label>
+			<input class="form-control" @bind="MaxPeerReceiveThreads" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max peer send threads</label>
+			<input class="form-control" @bind="MaxPeerSendThreads" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max peer keep alive threads</label>
+			<input class="form-control" @bind="MaxPeerKeepAliveThreads" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max peer update state threads</label>
+			<input class="form-control" @bind="MaxPeerUpdateStateThreads" />
+		</div>
+	</fieldset>
+
+	<fieldset class="settings-fieldset mb-4">
+		<legend>Messaging & Data</legend>
+
+		<div class="form-group mb-3">
+			<label>Max outbound message queue size</label>
+			<input class="form-control" @bind="MaxOutboundMessageQueueSize" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Block size</label>
+			<input class="form-control" @bind="BlockSizeBytes" />
+			<span class="ms-2 text-muted">bytes</span>
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max requests per peer</label>
+			<input class="form-control" @bind="MaxRequestsPerPeer" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max requests per piece</label>
+			<input class="form-control" @bind="MaxRequestsPerPiece" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Max active pieces</label>
+			<input class="form-control" @bind="MaxActivePieces" />
+		</div>
+	</fieldset>
+
+	<div class="settings-actions mt-4 mb-4 d-flex justify-content-end gap-2">
+		<button class="btn btn-outline-secondary" @onclick="ResetDefaults">
+			Reset to Default
+		</button>
+		<button class="btn btn-primary" @onclick="ApplySettings">
+			Apply Settings
+		</button>
+	</div>
+</div>
+
+@code {
+	string TorrentStoragePath { get; set; } = SessionConfig.TorrentStoragePath;
+	int PeerTimeout { get; set; } = SessionConfig.PeerTimeoutSeconds;
+	int PeerKeepAliveIntervalSeconds { get; set; } = SessionConfig.PeerKeepAliveIntervalSeconds;
+	int PeerStateRefreshTimerSeconds { get; set; } = SessionConfig.PeerStateRefreshTimerSeconds.Seconds;
+	int PeerReconnectCooldownSeconds { get; set; } = SessionConfig.PeerReconnectCooldownSeconds.Seconds;
+	int MaxSwarmSize { get; set; } = SessionConfig.MaxSwarmSize;
+	int MaxPeerConnectionThreads { get; set; } = SessionConfig.MaxPeerConnectionThreads;
+	int MaxPeerReceiveThreads { get; set; } = SessionConfig.MaxPeerReceiveThreads;
+	int MaxPeerSendThreads { get; set; } = SessionConfig.MaxPeerSendThreads;
+	int MaxPeerKeepAliveThreads { get; set; } = SessionConfig.MaxPeerKeepAliveThreads;
+	int MaxPeerUpdateStateThreads { get; set; } = SessionConfig.MaxPeerUpdateStateThreads;
+	int MaxOutboundMessageQueueSize { get; set; } = SessionConfig.MaxOutboundMessageQueueSize;
+	int BlockSizeBytes { get; set; } = SessionConfig.BlockSizeBytes;
+	int MaxRequestsPerPeer { get; set; } = SessionConfig.MaxRequestsPerPeer;
+	int MaxRequestsPerPiece { get; set; } = SessionConfig.MaxRequestsPerPiece;
+	int MaxActivePieces { get; set; } = SessionConfig.MaxActivePieces;
+
+	void ResetDefaults() {
+		TorrentStoragePath = SessionConfig.DefaultTorrentStoragePath;
+		PeerTimeout = SessionConfig.DefaultPeerTimeoutSeconds;
+		PeerKeepAliveIntervalSeconds = SessionConfig.DefaultPeerKeepAliveIntervalSeconds;
+		PeerStateRefreshTimerSeconds = SessionConfig.DefaultPeerStateRefreshTimerSeconds.Seconds;
+		PeerReconnectCooldownSeconds = SessionConfig.DefaultPeerReconnectCooldownSeconds.Seconds;
+		MaxSwarmSize = SessionConfig.DefaultMaxSwarmSize;
+		MaxPeerConnectionThreads = SessionConfig.DefaultMaxPeerConnectionThreads;
+		MaxPeerReceiveThreads = SessionConfig.DefaultMaxPeerReceiveThreads;
+		MaxPeerSendThreads = SessionConfig.DefaultMaxPeerSendThreads;
+		MaxPeerKeepAliveThreads = SessionConfig.DefaultMaxPeerKeepAliveThreads;
+		MaxPeerUpdateStateThreads = SessionConfig.DefaultMaxPeerUpdateStateThreads;
+		MaxOutboundMessageQueueSize = SessionConfig.DefaultMaxOutboundMessageQueueSize;
+		BlockSizeBytes = SessionConfig.DefaultBlockSizeBytes;
+		MaxRequestsPerPeer = SessionConfig.DefaultMaxRequestsPerPeer;
+		MaxRequestsPerPiece = SessionConfig.DefaultMaxRequestsPerPiece;
+		MaxActivePieces = SessionConfig.DefaultMaxActivePieces;
+
+		NotificationService.Show("Settings reset to default.", NotificationType.Info);
+	}
+
+	void ApplySettings() {
+		SessionConfig.TorrentStoragePath = TorrentStoragePath;
+		SessionConfig.PeerTimeoutSeconds = PeerTimeout;
+		SessionConfig.PeerKeepAliveIntervalSeconds = PeerKeepAliveIntervalSeconds;
+		SessionConfig.PeerStateRefreshTimerSeconds = TimeSpan.FromSeconds(PeerStateRefreshTimerSeconds);
+		SessionConfig.PeerReconnectCooldownSeconds = TimeSpan.FromSeconds(PeerReconnectCooldownSeconds);
+		SessionConfig.MaxSwarmSize = MaxSwarmSize;
+		SessionConfig.MaxPeerConnectionThreads = MaxPeerConnectionThreads;
+		SessionConfig.MaxPeerReceiveThreads = MaxPeerReceiveThreads;
+		SessionConfig.MaxPeerSendThreads = MaxPeerSendThreads;
+		SessionConfig.MaxPeerKeepAliveThreads = MaxPeerKeepAliveThreads;
+		SessionConfig.MaxPeerUpdateStateThreads = MaxPeerUpdateStateThreads;
+		SessionConfig.MaxOutboundMessageQueueSize = MaxOutboundMessageQueueSize;
+		SessionConfig.BlockSizeBytes = BlockSizeBytes;
+		SessionConfig.MaxRequestsPerPeer = MaxRequestsPerPeer;
+		SessionConfig.MaxRequestsPerPiece = MaxRequestsPerPiece;
+		SessionConfig.MaxActivePieces = MaxActivePieces;
+
+		NotificationService.Show("Settings applied!");
+	}
+}

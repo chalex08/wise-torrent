@@ -73,7 +73,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			InitialiseServiceTaskClients(torrentSession);
 			
 			_logger.Info("Creating peer task bundles");
-			CreatePeerTaskBundles(torrentSession);
+			CreatePeerTaskBundles(torrentSession, torrentSession.AwaitingHandshakePeers);
 			_logger.Info("Successfully created peer task bundles");
 
 			_logger.Info("Starting peer sibling tasks");
@@ -90,8 +90,8 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				try
 				{
 					await Task.Delay(5000, CToken);
-					var completion = (torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount);
-					_logger.Warn($"[Status Update] Torrent is {completion:F4}% complete");
+					var completion = (torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount) * 100;
+					_logger.Warn($"[Status Update] Torrent is {completion:F2}% complete");
 
 					if (torrentSession.ConnectedPeers.Count == 0)
 					{
@@ -142,9 +142,9 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			}
 		}
 
-		private void CreatePeerTaskBundles(TorrentSession torrentSession)
+		private void CreatePeerTaskBundles(TorrentSession torrentSession, IEnumerable<Peer> peers)
 		{
-			foreach (var peer in torrentSession.AllPeers)
+			foreach (var peer in peers)
 			{
 				if (torrentSession.PeerTasks.ContainsKey(peer))
 				{
@@ -179,12 +179,13 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 		private void SubscribeToEvents(TorrentSession torrentSession)
 		{
-			torrentSession.OnTrackerResponse.Subscribe(peers =>
+			torrentSession.OnTrackerResponse.Subscribe(async peers =>
 			{
 				var newPeers = new ConcurrentSet<Peer>();
 				newPeers.AddRange(torrentSession.AllPeers.Where(p => !peers.Contains(p)));
 				torrentSession.AllPeers.AddRange(newPeers);
-				_peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken, newPeers);
+				await _peerManager.HandleTrackerResponse(torrentSession, _peerConnectorLogger, CToken, newPeers);
+				CreatePeerTaskBundles(torrentSession, newPeers);
 			});
 
 			torrentSession.OnPeerMessageReceived.Subscribe(peeredMessage =>
@@ -201,6 +202,8 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			{
 				torrentSession.PendingRequests.TryRemove(peer, out _);
 				_pieceManager?.RemovePeerFromRarity(peer.AvailablePieces);
+				torrentSession.PeerTasks.TryRemove(peer, out var cancelledBundle);
+				cancelledBundle?.CTS.Cancel();
 			});
 		}
 

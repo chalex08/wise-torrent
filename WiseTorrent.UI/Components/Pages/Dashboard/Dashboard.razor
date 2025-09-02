@@ -2,54 +2,154 @@
 @namespace WiseTorrent.UI.Components.Pages.Dashboard
 @using WiseTorrent.Core.Interfaces
 @using WiseTorrent.UI.Services
+@using WiseTorrent.Utilities.Types
+@using System.IO
 
 @inject UIStateService UIStateService
 @inject IFilePickerService FilePickerService
 @inject ITorrentEngine TorrentEngine
+@inject ITorrentSessionManager TorrentSessionManager
+@inject NotificationService NotificationService
 
 <PageTitle>Dashboard</PageTitle>
 
-<h1>Dashboard</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Dashboard</h1>
+    <button class="btn btn-outline-primary" @onclick="SelectTorrentFile">Add torrent</button>
+</div>
 
-<button @onclick="SelectTorrentFile">Select Torrent File</button>
-<button @onclick="StartDownload" disabled="@string.IsNullOrEmpty(selectedFile)">Start Download</button>
-<button @onclick="StopDownload" disabled="@(!downloadStarted)">Stop Download</button>
+<table class="table table-modern">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Progress</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var TorrentFilePath in UIStateService.TorrentFilepaths)
+        {
+            var progress = GetProgressPercent(TorrentFilePath);
+            var state = GetTorrentState(TorrentFilePath);
 
-<span>Selected: @selectedFile</span>
+            <tr class="torrent-row">
+                <td>@Path.GetFileNameWithoutExtension(TorrentFilePath)</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1" style="height: 0.75rem;">
+                            <div class="progress-bar" role="progressbar" style="width:@progress%"
+                            aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                        <span class="ms-2">@progress%</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge @(state == EventState.Started ? "bg-success" : "bg-secondary")">@state</span>
+                </td>
+                <td class="d-flex gap-2">
+                    @if (state == EventState.Started)
+                    {
+                        <button class="btn btn-outline-warning"
+                                @onclick="() => Pause(TorrentFilePath)">
+                            <i class="bi bi-pause-fill"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-success"
+                                @onclick="() => Start(TorrentFilePath)">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    }
+                    <button class="btn btn-outline-danger"
+                            @onclick="() => Cancel(TorrentFilePath)">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
 @code {
-	private string? selectedFile;
-	private bool downloadStarted;
+    private System.Timers.Timer? _refreshTimer;
 
-	protected override async Task OnInitializedAsync()
-	{
-		if (UIStateService.SelectedFile != null)
-		{
-			selectedFile = UIStateService.SelectedFile;
-			downloadStarted = UIStateService.DownloadStarted;
-		}
-		await Task.CompletedTask;
-	}
+    protected override void OnInitialized()
+    {
+        _refreshTimer = new System.Timers.Timer(1000);
+        _refreshTimer.Elapsed += (s, e) => InvokeAsync(StateHasChanged);
+        _refreshTimer.AutoReset = true;
+        _refreshTimer.Start();
+    }
 
-	private void SelectTorrentFile()
-	{
-		selectedFile = FilePickerService.PickFile();
-		UIStateService.SelectedFile = selectedFile;
-	}
+    double GetProgressPercent(string TorrentFilePath)
+    {
+        var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        if (session == null)
+            return 0;
 
-	private void StartDownload()
-	{
-		if (string.IsNullOrEmpty(selectedFile)) return;
-		downloadStarted = true;
-		UIStateService.DownloadStarted = true;
-		TorrentEngine.StartTorrentEngineSession(selectedFile);
-	}
+        return Math.Round(((double)(session.TotalBytes - session.RemainingBytes) / session.TotalBytes) * 100, 2);
+    }
 
-	private void StopDownload()
-	{
-		if (!downloadStarted || string.IsNullOrEmpty(selectedFile)) return;
-		downloadStarted = false;
-		UIStateService.DownloadStarted = false;
-		TorrentEngine.CancelTorrentEngineSession(selectedFile);
-	}
+    EventState GetTorrentState(string TorrentFilePath)
+    {
+        var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        if (session != null)
+            return session.CurrentEvent;
+
+        // If it exists in the UI but has no active session → it's paused/queued
+        if (UIStateService.TorrentFilepaths.Contains(TorrentFilePath))
+            return EventState.Stopped;
+
+        return EventState.None; // Never added
+    }
+
+    void SelectTorrentFile()
+    {
+        var selectedFile = FilePickerService.PickFile();
+        if (selectedFile == null) return;
+        UIStateService.TorrentFilepaths.Add(selectedFile);
+    }
+
+
+    void Start(string TorrentFilePath)
+    {
+        NotificationService.Show("Download started " + Path.GetFileNameWithoutExtension(TorrentFilePath));
+
+        if (string.IsNullOrEmpty(TorrentFilePath)) return;
+        TorrentEngine.StartTorrentEngineSession(TorrentFilePath);
+        InvokeAsync(StateHasChanged);
+    }
+
+    async Task Pause(string TorrentFilePath)
+    {
+        NotificationService.Show("Download paused " + Path.GetFileNameWithoutExtension(TorrentFilePath), NotificationType.Info);
+
+        if (string.IsNullOrEmpty(TorrentFilePath)) return;
+
+        var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        if (session != null)
+        {
+            session.CurrentEvent = EventState.Stopped; // explicitly mark as stopped/paused
+        }
+
+        await TorrentEngine.PauseTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task Cancel(string TorrentFilePath)
+    {
+        if (string.IsNullOrEmpty(TorrentFilePath)) return;
+        await TorrentEngine.CancelTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        UIStateService.TorrentFilepaths.Remove(TorrentFilePath);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Stop();
+        _refreshTimer?.Dispose();
+    }
 }

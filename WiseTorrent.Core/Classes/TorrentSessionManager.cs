@@ -5,7 +5,7 @@ using WiseTorrent.Utilities.Types;
 
 namespace WiseTorrent.Core.Classes
 {
-	internal class TorrentSessionManager : ITorrentSessionManager
+    public class TorrentSessionManager : ITorrentSessionManager
 	{
 		private readonly ILogger<TorrentSessionManager> _logger;
 

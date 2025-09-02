@@ -1,0 +1,103 @@
+﻿@page "/torrentMetrics"
+
+@using WiseTorrent.Core.Interfaces
+@using WiseTorrent.UI.Services
+@using WiseTorrent.Utilities.Types
+@using System.IO
+
+@inject UIStateService UIStateService
+@inject IFilePickerService FilePickerService
+@inject ITorrentEngine TorrentEngine
+@inject ITorrentSessionManager TorrentSessionManager
+@inject NotificationService NotificationService
+
+<PageTitle>TorrentMetrics</PageTitle>
+
+<h1>Torrent Metrics</h1>
+
+<div class="d-flex gap-4" style="height: 70vh;">
+    <!-- Torrent List -->
+    <div class="flex-shrink-0" style="width: 300px; overflow-y: auto;">
+        <table class="table table-modern table-hover">
+            <thead>
+                <tr>
+                    <th>Torrent</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var session in _activeSessions)
+                {
+                    <tr class="torrent-row @(session == _selectedSession ? "table-primary" : "")"
+                        @onclick="() => SelectTorrent(session)"
+                        style="cursor: pointer;">
+                        <td>@session.Info.Name</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Torrent Metrics Widget -->
+    <div class="flex-grow-1 border rounded p-3" style="background-color: #f8f9fa;">
+        @if (_selectedSession != null)
+        {
+            <h4>Metrics for @_selectedSession.Info.Name</h4>
+            var snapshot = _selectedSession.Metrics.GetSnapshot();
+            <div class="row">
+                <div class="col-6">
+                    <strong>Download Rate:</strong> @snapshot.DownloadRate B/s
+                </div>
+                <div class="col-6">
+                    <strong>Upload Rate:</strong> @snapshot.UploadRate B/s
+                </div>
+                <div class="col-6">
+                    <strong>Messages Sent:</strong> @snapshot.MessagesSent
+                </div>
+                <div class="col-6">
+                    <strong>Messages Received:</strong> @snapshot.MessagesReceived
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">Select a torrent to view its metrics</p>
+        }
+    </div>
+</div>
+
+@code {
+    private List<TorrentSession> _activeSessions = new();
+    private Dictionary<TorrentSession, TorrentMetricsSnapshot> _snapshots = new();
+    private TorrentSession? _selectedSession;
+    private Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _activeSessions = TorrentSessionManager.AllSessions.ToList();
+        if (_activeSessions.Any())
+            _selectedSession = _activeSessions.First();
+
+        _timer = new Timer(UpdateMetrics, null, TimeSpan.Zero, TimeSpan.FromSeconds(15));
+    }
+
+    private void UpdateMetrics(object? state)
+    {
+        foreach (var session in _activeSessions)
+        {
+            // session.Metrics.RefreshRates();
+            _snapshots[session] = session.Metrics.GetSnapshot();
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SelectTorrent(TorrentSession session)
+    {
+        _selectedSession = session;
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

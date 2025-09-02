@@ -109,6 +109,7 @@ namespace WiseTorrent.Peers.Classes
 			peer.HandshakeCompleted = true;
 			peer.ProtocolStage = PeerProtocolStage.AwaitingBitfield;
 			_torrentSession.ConnectedPeers.Add(peer);
+			_torrentSession.AwaitingHandshakePeers.Remove(peer);
 
 			_torrentSession.OnPeerConnected.NotifyListeners(peer);
 			_logger.Info($"Handshake successful. Peer now connected (PeerID: {peer.PeerID ?? peer.IPEndPoint.ToString()})");
@@ -205,6 +206,11 @@ namespace WiseTorrent.Peers.Classes
 			if (parsedBlock == null || !IsValidRequest(parsedBlock)) return;
 
 			_torrentSession.OnBlockRequestReceived.NotifyListeners((peer, parsedBlock));
+			_torrentSession.OnBlockReadFromDisk.Subscribe(pb =>
+			{
+				if (pb.Item1 == peer)
+					_peerManager.TryQueueMessage(peer, PeerMessage.CreatePieceMessage(pb.Item2));
+			});
 			if (peer.ProtocolStage == PeerProtocolStage.AwaitingHaveOrRequest)
 				peer.ProtocolStage = PeerProtocolStage.AwaitingPiece;
 			_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received request from peer, about (Piece Index, Block Offset): ({parsedBlock.PieceIndex}, {parsedBlock.Offset})");
