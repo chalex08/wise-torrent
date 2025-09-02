@@ -28,7 +28,10 @@ namespace WiseTorrent.Storage.Classes
 			torrentSession.OnBlockReceived.Subscribe(block =>
 			{
 				if (TryEnqueue(block))
+				{
+					torrentSession.Metrics.RecordReceive(block.Length);
 					_logger.Info($"Queued new block for writing to disk (Piece Index, Block Offset: {block.PieceIndex}, {block.Offset})");
+				}
 				else
 					_logger.Error($"Failed to queue new block (Piece Index, Block Offset: {block.PieceIndex}, {block.Offset})");
 			});
@@ -41,23 +44,30 @@ namespace WiseTorrent.Storage.Classes
 			});
 
 			var fileMap = torrentSession.FileMap;
-
+			
 			while (!CToken.IsCancellationRequested)
 			{
-				var block = await DequeueAsync(CToken);
-				if (block == null) continue;
+				try
+				{
+					var block = await DequeueAsync(CToken);
+					if (block == null) continue;
 
-				await _fileManager.WriteBlockAsync(block, fileMap, CancellationToken.None);
-				torrentSession.RemainingBytes -= block.Length;
+					await _fileManager.WriteBlockAsync(block, fileMap, CancellationToken.None);
+					torrentSession.RemainingBytes -= block.Length;
+				}
+				catch (OperationCanceledException)
+				{
+					_logger.Info("Storage service task cancellation requested, cleaning up");
+				}
 			}
-
+		
 			if (torrentSession.ShouldFlushOnShutdown)
 			{
 				int flushCount = await FlushRemainingPiecesAsync(torrentSession);
 				_logger.Info($"Storage service task flushed remaining {flushCount} blocks");
 				torrentSession.OnPiecesFlushed.NotifyListeners(true);
 			}
-			
+
 			_logger.Info("Storage service task stopped");
 		}
 

@@ -30,6 +30,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 				catch (OperationCanceledException)
 				{
 					_logger.Error($"Request monitor cancelled for peer {peer.PeerID ?? peer.IPEndPoint.ToString()}");
+					break;
 				}
 				catch (Exception ex)
 				{

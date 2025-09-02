@@ -28,6 +28,11 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 					PeerManager!.UpdatePeerStatesAsync(pCToken);
 					await PeerManager!.UpdatePeerSelectionAsync(pCToken);
 				}
+				catch (OperationCanceledException)
+				{
+					_logger.Info("Update peer state service loop stopped");
+					break;
+				}
 				catch (Exception ex)
 				{
 					_logger.Error("Update peer state service loop encountered error", ex);

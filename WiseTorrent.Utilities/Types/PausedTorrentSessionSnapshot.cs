@@ -1,4 +1,6 @@
-﻿namespace WiseTorrent.Utilities.Types
+﻿using System.Text.Json.Serialization;
+
+namespace WiseTorrent.Utilities.Types
 {
 	public class PausedTorrentSessionSnapshot
 	{
@@ -9,7 +11,16 @@
 		public long RemainingBytes { get; init; }
 		public List<ServerURL> TrackerUrls { get; init; } = new();
 		public int CurrentTrackerUrlIndex { get; init; }
+
+		[JsonIgnore] 
 		public ConcurrentSet<Piece> Pieces { get; init; } = new();
+		[JsonPropertyName("Pieces")]
+		public List<Piece> PiecesSnapshot
+		{
+			get => Pieces.All.ToList();
+			init => Pieces = new ConcurrentSet<Piece>(value);
+		}
+
 		public PieceManagerSnapshot PieceManagerSnapshot { get; init; } = new();
 
 		public static PausedTorrentSessionSnapshot CreateSnapshotOfSession(TorrentSession session, PieceManagerSnapshot pieceManagerSnapshot)

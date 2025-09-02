@@ -58,7 +58,7 @@ namespace WiseTorrent.Tests.TrackersTests
 				Info = parsedMetadata.Info,
 				InfoHash = parsedMetadata.InfoHash,
 				LocalPeer = new Peer { PeerID = peerId, IPEndPoint = new IPEndPoint(ip, 6881) },
-				FileMap = new FileMap(0, []),
+				FileMap = new FileMap(0, new List<TorrentFile>()),
 				TotalBytes = totalBytes,
 				RemainingBytes = totalBytes,
 				CurrentEvent = EventState.Started,

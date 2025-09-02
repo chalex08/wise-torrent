@@ -85,13 +85,11 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 			_logger.Info("Peer service task started");
 			var pieceCount = torrentSession.Info.PieceHashes.Length;
-			while (!CToken.IsCancellationRequested)
+			while (true)
 			{
 				try
 				{
 					await Task.Delay(5000, CToken);
-					var completion = (torrentSession.Pieces.All.Count(p => p.IsPieceComplete()) / (double)pieceCount) * 100;
-					_logger.Warn($"[Status Update] Torrent is {completion:F2}% complete");
 
 					if (torrentSession.ConnectedPeers.Count == 0)
 					{
@@ -100,19 +98,27 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 						if (retryPeers.Any()) await _peerManager.ConnectToAllPeersAsync(retryPeers, CToken);
 					}
 				}
+				catch (OperationCanceledException)
+				{
+					_logger.Info("Peer service task cancellation requested, cleaning up");
+
+					_logger.Info("Stopping peer child service tasks");
+					await StopAllPeerServiceTasks(torrentSession);
+
+					_logger.Info("Disconnecting all peers");
+					await _peerManager.DisconnectAllPeersAsync(CancellationToken.None);
+
+					if (torrentSession.ShouldSnapshotOnShutdown)
+					{
+						torrentSession.OnPieceManagerSnapshotted.NotifyListeners(_pieceManager.CreateSnapshot());
+						_logger.Info("Peer service task snapshotted piece manager state");
+					}
+					break;
+				}
 				catch (Exception ex)
 				{
 					_logger.Error("Peer service loop encountered error", ex);
 				}
-			}
-
-			_logger.Info("Stopping peer child service tasks");
-			await StopAllPeerServiceTasks(torrentSession);
-
-			if (torrentSession.ShouldSnapshotOnShutdown)
-			{
-				torrentSession.OnPieceManagerSnapshotted.NotifyListeners(_pieceManager.CreateSnapshot());
-				_logger.Info("Peer service task snapshotted piece manager state");
 			}
 
 			_logger.Info("Peer service task, and all child service tasks, stopped");
@@ -219,7 +225,7 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 						? "s"
 						: " " + (peer.PeerID ?? peer.IPEndPoint.ToString());
 					_logger.Info($"[SafeRun] Starting {taskName} for peer{peerLabel} [Task {taskId}]");
-					await taskFunc();
+					await taskFunc().ConfigureAwait(false);
 					_logger.Info($"[SafeRun] Finished {taskName} for peer{peerLabel}");
 				}
 				catch (Exception ex)
@@ -239,7 +245,28 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 			foreach (var bundle in torrentSession.PeerTasks.Values)
 			{
 				await bundle.CTS.CancelAsync();
-				await Task.WhenAll(bundle.Tasks);
+				foreach (var task in bundle.Tasks)
+				{
+					try
+					{
+						var completed = await Task.WhenAny(task, Task.Delay(100));
+						if (completed != task)
+						{
+							_logger.Warn("Peer task did not complete within timeout");
+						}
+						else
+						{
+							_logger.Info("Peer task completed");
+						}
+
+						_logger.Info($"Peer task completed");
+					}
+					catch (Exception ex)
+					{
+						_logger.Error("Peer task failed", ex);
+					}
+				}
+
 			}
 		}
 	}

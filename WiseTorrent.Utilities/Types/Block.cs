@@ -8,6 +8,8 @@
 		public byte[]? Data { get; set; }
 		public bool IsMarkedForRetry { get; set; } = false;
 
+		public Block() { } // needed for deserialization
+
 		public Block(int pieceIndex, int offset, int length)
 		{
 			PieceIndex = pieceIndex;

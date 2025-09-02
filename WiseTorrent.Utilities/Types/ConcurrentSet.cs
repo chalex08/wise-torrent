@@ -7,7 +7,15 @@ namespace WiseTorrent.Utilities.Types
 	{
 		private readonly ConcurrentDictionary<T, bool> _set = new();
 
+		public ConcurrentSet() { }
+
+		public ConcurrentSet(IEnumerable<T> items)
+		{
+			AddRange(items);
+		}
+
 		public bool Add(T param) => _set.TryAdd(param, true);
+
 		public void AddRange(IEnumerable<T> items)
 		{
 			foreach (var item in items)
@@ -15,6 +23,7 @@ namespace WiseTorrent.Utilities.Types
 				_set.TryAdd(item, true);
 			}
 		}
+
 		public bool Remove(T param) => _set.TryRemove(param, out _);
 		public bool Contains(T param) => _set.ContainsKey(param);
 		public int Count => _set.Count;

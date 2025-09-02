@@ -13,7 +13,7 @@ namespace WiseTorrent.Utilities.Classes
 		{
 			var entry = new LogEntry
 			{
-				Timestamp = DateTime.UtcNow,
+				Timestamp = DateTime.Now,
 				Level = level,
 				ClassName = className,
 				Message = message
@@ -32,7 +32,7 @@ namespace WiseTorrent.Utilities.Classes
 				{
 					var logError = new LogEntry
 					{
-						Timestamp = DateTime.UtcNow,
+						Timestamp = DateTime.Now,
 						Level = LogLevel.Warn,
 						ClassName = "LogBuffer",
 						Message = $"Log buffer overloaded, can ignore, Message start: {entry.Message.Take(15)}"

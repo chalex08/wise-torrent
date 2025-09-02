@@ -73,8 +73,6 @@ namespace WiseTorrent.Peers.Classes
 
 					case PeerMessageType.Piece:
 						HandlePiece(peer, message, token);
-						_torrentSession.Metrics.RecordReceive(message.Payload.Length);
-						peer.Metrics.RecordReceive(message.Payload.Length);
 						break;
 
 					case PeerMessageType.KeepAlive:
@@ -209,7 +207,11 @@ namespace WiseTorrent.Peers.Classes
 			_torrentSession.OnBlockReadFromDisk.Subscribe(pb =>
 			{
 				if (pb.Item1 == peer)
+				{
+					_torrentSession.Metrics.RecordSend(pb.Item2.Length);
+					peer.Metrics.RecordReceive(pb.Item2.Length);
 					_peerManager.TryQueueMessage(peer, PeerMessage.CreatePieceMessage(pb.Item2));
+				}
 			});
 			if (peer.ProtocolStage == PeerProtocolStage.AwaitingHaveOrRequest)
 				peer.ProtocolStage = PeerProtocolStage.AwaitingPiece;
@@ -248,14 +250,19 @@ namespace WiseTorrent.Peers.Classes
 			if (_torrentSession.PendingRequests.TryGetValue(peer, out var pending))
 			{
 				// remove the block from pending requests
-				pending.TryRemove(block, out _);
+				pending.TryRemove(block, out var requestTime);
+				peer.Metrics.RecordResponseTime(DateTime.UtcNow - requestTime);
+				peer.Metrics.DecrementPendingRequests();
 			}
 
 			_torrentSession.PieceRequestCounts.AddOrUpdate(block.PieceIndex, 0, (k, v) => v > 0 ? v - 1 : 0);
 			_torrentSession.PeerRequestCounts.AddOrUpdate(peer, 0, (k, v) => v > 0 ? v - 1 : 0);
 
 			if (piece.IsBlockValid(block))
+			{
 				_torrentSession.OnBlockReceived.NotifyListeners(block);
+				peer.Metrics.RecordSend(block.Length);
+			}
 
 			_logger.Info($"(Peer: {peer.PeerID ?? peer.IPEndPoint.ToString()}) Received block (Piece Index: {block.PieceIndex}, Offset: {block.Offset})");
 

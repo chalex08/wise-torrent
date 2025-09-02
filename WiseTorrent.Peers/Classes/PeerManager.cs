@@ -70,7 +70,6 @@ namespace WiseTorrent.Peers.Classes
 				await _peerConnectors[peer].InitiateHandshakeAsync(cToken);
 				peer.ResetDecay();
 				peer.LastConnectAttempt = DateTime.UtcNow;
-				_torrentSession.AwaitingHandshakePeers.Add(peer);
 			}
 			catch (OperationCanceledException)
 			{
@@ -171,6 +170,7 @@ namespace WiseTorrent.Peers.Classes
 					_torrentSession.PieceRequestCounts.AddOrUpdate(pieceIndex, 0, (k, v) => v + 1);
 					_torrentSession.PeerRequestCounts.AddOrUpdate(peer, 0, (k, v) => v + 1);
 					pending.TryAdd(block, DateTime.UtcNow);
+					peer.Metrics.IncrementPendingRequests();
 					blocksRequested++;
 
 				}

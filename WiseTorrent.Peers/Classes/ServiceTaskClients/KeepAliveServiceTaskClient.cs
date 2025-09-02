@@ -32,8 +32,14 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 					if (idleTime > interval)
 					{
 						PeerManager!.TryQueueMessage(peer, PeerMessage.CreateKeepAlive());
-						_logger.Info($"Keep alive sent to {peer.PeerID ?? peer.IPEndPoint.ToString()} after {idleTime.TotalSeconds:F1}s idle");
+						_logger.Info(
+							$"Keep alive sent to {peer.PeerID ?? peer.IPEndPoint.ToString()} after {idleTime.TotalSeconds:F1}s idle");
 					}
+				}
+				catch (OperationCanceledException)
+				{
+					_logger.Info("Peer keep alive service loop stopped");
+					break;
 				}
 				catch (Exception ex)
 				{

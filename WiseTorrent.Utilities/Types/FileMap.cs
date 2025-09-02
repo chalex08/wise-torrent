@@ -1,13 +1,23 @@
-﻿namespace WiseTorrent.Utilities.Types
+﻿using System.Text.Json.Serialization;
+
+namespace WiseTorrent.Utilities.Types
 {
 	public class FileMap
 	{
-		private Dictionary<int, List<FileSegment>> pieceMap = new();
-		private readonly long pieceLength;  // number of bytes in each piece
+		public Dictionary<int, List<FileSegment>> PieceMap { get; private set; }
+		public long PieceLength { get; }
+
+		[JsonConstructor]
+		public FileMap(long pieceLength, Dictionary<int, List<FileSegment>> pieceMap)
+		{
+			PieceLength = pieceLength;
+			PieceMap = pieceMap;
+		}
 
 		public FileMap(long pieceLength, IEnumerable<TorrentFile> files)
 		{
-			this.pieceLength = pieceLength;
+			PieceLength = pieceLength;
+			PieceMap = new();
 			BuildMap(files);
 		}
 
@@ -23,12 +33,12 @@
 
 				while (remaining > 0)
 				{
-					long assignLength = Math.Min(pieceLength - globalOffset % pieceLength, remaining);
+					long assignLength = Math.Min(PieceLength - globalOffset % PieceLength, remaining);
 
-					if (!pieceMap.TryGetValue(pieceIndex, out var segments))
+					if (!PieceMap.TryGetValue(pieceIndex, out var segments))
 					{
 						segments = new List<FileSegment>();
-						pieceMap[pieceIndex] = segments;
+						PieceMap[pieceIndex] = segments;
 					}
 
 					segments.Add(new FileSegment(Path.Join(SessionConfig.TorrentStoragePath, file.RelativePath), fileOffset, assignLength));
@@ -38,7 +48,7 @@
 					globalOffset += assignLength;
 
 					// Move to next piece if the current piece is full
-					if (globalOffset % pieceLength == 0)
+					if (globalOffset % PieceLength == 0)
 					{
 						pieceIndex++;
 					}
@@ -48,7 +58,7 @@
 
 		public IReadOnlyList<FileSegment> Resolve(int pieceIndex)
 		{
-			if (!pieceMap.TryGetValue(pieceIndex, out var segments))
+			if (!PieceMap.TryGetValue(pieceIndex, out var segments))
 				throw new ArgumentOutOfRangeException(nameof(pieceIndex), "No mapping for this piece index.");
 
 			return segments;

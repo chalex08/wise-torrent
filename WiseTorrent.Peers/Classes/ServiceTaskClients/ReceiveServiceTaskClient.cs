@@ -24,13 +24,21 @@ namespace WiseTorrent.Peers.Classes.ServiceTaskClients
 
 			while (!pCToken.IsCancellationRequested)
 			{
-				await Task.Delay(1, pCToken);
-				byte[] receivedBytes = await PeerManager!.ReceivePeerMessageAsync(peer, pCToken);
-				var message = PeerMessage.FromBytes(receivedBytes);
-				if (message != null)
+				try
 				{
-					peer.LastReceived = DateTime.UtcNow;
-					TorrentSession?.OnPeerMessageReceived.NotifyListeners((peer, message));
+					await Task.Delay(1, pCToken);
+					byte[] receivedBytes = await PeerManager!.ReceivePeerMessageAsync(peer, pCToken);
+					var message = PeerMessage.FromBytes(receivedBytes);
+					if (message != null)
+					{
+						peer.LastReceived = DateTime.UtcNow;
+						TorrentSession?.OnPeerMessageReceived.NotifyListeners((peer, message));
+					}
+				}
+				catch (OperationCanceledException)
+				{
+					_logger.Info("Peer receive service loop stopped");
+					break;
 				}
 			}
 		}

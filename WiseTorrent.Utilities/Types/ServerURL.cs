@@ -1,13 +1,39 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace WiseTorrent.Utilities.Types
 {
-	public class ServerURL(string url)
+	public class ServerURL
 	{
-		public PeerDiscoveryProtocol Protocol { get; set; } = URLToProtocol(url);
-		public Uri Url { get; set; } = new (url);
+		public PeerDiscoveryProtocol Protocol { get; set; }
+
+		[JsonIgnore]
+		public Uri Url { get; set; }
+
+		[JsonPropertyName("Url")]
+		public string UrlString
+		{
+			get => Url.ToString();
+			set
+			{
+				Url = new Uri(value);
+				Protocol = URLToProtocol(value);
+			}
+		}
+
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+		public ServerURL() { } // needed for deserialization
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
+		public ServerURL(string url)
+		{
+			Url = new Uri(url);
+			Protocol = URLToProtocol(url);
+		}
+
+
 
 		private static PeerDiscoveryProtocol URLToProtocol(string url)
 		{

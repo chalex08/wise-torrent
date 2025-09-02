@@ -84,7 +84,7 @@
     {
         foreach (var session in _activeSessions)
         {
-            // session.Metrics.RefreshRates();
+            session.Metrics.RefreshRates();
             _snapshots[session] = session.Metrics.GetSnapshot();
         }
 

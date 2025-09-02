@@ -1,4 +1,6 @@
-﻿namespace WiseTorrent.Utilities.Types
+﻿using System.Text.Json.Serialization;
+
+namespace WiseTorrent.Utilities.Types
 {
 	public class TorrentInfo
 	{
@@ -28,5 +30,16 @@
 			PieceHashes = pieceHashes;
 			Files = files;
 		}
+
+		[JsonConstructor]
+		public TorrentInfo(string name, ByteSize pieceLength, byte[][] pieceHashes, ByteSize? length = null, List<TorrentFile>? files = null)
+		{
+			Name = name;
+			PieceLength = pieceLength;
+			PieceHashes = pieceHashes;
+			Length = length;
+			Files = files;
+		}
+
 	}
 }

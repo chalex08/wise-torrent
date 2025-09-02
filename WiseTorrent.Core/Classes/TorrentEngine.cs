@@ -52,9 +52,6 @@ namespace WiseTorrent.Core.Classes
 				_logger.Info($"Pausing torrent session (Torrent Name: {torrentSession.Info.Name})");
 				torrentSession.ShouldFlushOnShutdown = true;
 				torrentSession.ShouldSnapshotOnShutdown = true;
-				await torrentSession.Cts.CancelAsync();
-				_torrentSessionManager.RemoveSession(torrentSession);
-
 				var tcs = new TaskCompletionSource();
 				bool stored = false;
 				bool piecesFlushed = false;
@@ -80,8 +77,12 @@ namespace WiseTorrent.Core.Classes
 						pieceManagerSnapshot = snapshot;
 					}
 				});
-				await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(10)));
 
+				await torrentSession.Cts.CancelAsync();
+				_torrentSessionManager.RemoveSession(torrentSession);
+				
+				await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(20)));
+				torrentSession.OnPauseCompleted.NotifyListeners(Math.Round(((double)(torrentSession.TotalBytes - torrentSession.RemainingBytes) / torrentSession.TotalBytes) * 100, 2));
 				_logger.Info($"Successfully paused torrent session (Torrent Name: {torrentSession.Info.Name})");
 			}
 			else
@@ -116,8 +117,6 @@ namespace WiseTorrent.Core.Classes
 			_torrentSessionManager.AddSession(torrentSession);
 			var currentSessionToken = torrentSession.Cts.Token;
 
-			StartTrackerPhase(torrentSession, currentSessionToken);
-
 			bool downloadStarted = false;
 
 			void TrackerListener(ConcurrentSet<Peer> peers)
@@ -136,6 +135,8 @@ namespace WiseTorrent.Core.Classes
 				await HandleFileCompletion(torrentSession);
 				torrentSession.CurrentEvent = EventState.Completed;
 			});
+
+			StartTrackerPhase(torrentSession, currentSessionToken);
 		}
 
 		private TorrentSession? TryLoadPausedSession(string torrentFilePath)
@@ -208,7 +209,7 @@ namespace WiseTorrent.Core.Classes
 				{
 					_logger.Error($"{serviceTaskName} service task failed", ex);
 				}
-			}, cToken);
+			});
 			_logger.Info($"{serviceTaskName} service task started (Torrent Name: {torrentSession.Info.Name})");
 		}
 

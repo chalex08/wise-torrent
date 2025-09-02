@@ -4,15 +4,15 @@ namespace WiseTorrent.Utilities.Types
 {
 	public class Piece
 	{
-		public int Index { get; }
-		public byte[] ExpectedHash { get; }
+		public int Index { get; set; }
+		public byte[] ExpectedHash { get; set; }
 		public bool State { get; private set; }
 		public int Length => Blocks.Sum(b => b.Data?.Length ?? 0);
-		public IEnumerable<Block> Blocks { get; private set; }
+		public IEnumerable<Block> Blocks { get; set; }
 
-		public int DownloadAttempts { get; private set; }
-		public int ValidationFailures { get; private set; }
-		public DateTime? LastValidationTime { get; private set; }
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+		public Piece() { } // needed for deserialization
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
 		public Piece(int index, byte[] expectedHash, int pieceLength)
 		{

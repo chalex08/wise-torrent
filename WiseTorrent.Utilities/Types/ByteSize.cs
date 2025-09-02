@@ -1,15 +1,18 @@
-﻿namespace WiseTorrent.Utilities.Types
+﻿using System.Text.Json.Serialization;
+
+namespace WiseTorrent.Utilities.Types
 {
 	public class ByteSize
 	{
-		public ByteUnit Unit;
-		public long Size;
+		public ByteUnit Unit { get; }
+		public long Size { get; }
 
+		[JsonConstructor]
 		public ByteSize(ByteUnit unit, long size)
 		{
 			if (size < 0) throw new ArgumentOutOfRangeException(nameof(size));
-			this.Unit = unit;
-			this.Size = size;
+			Unit = unit;
+			Size = size;
 		}
 
 		public ByteSize(long sizeInBytes)

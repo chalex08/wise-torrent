@@ -33,6 +33,7 @@ namespace WiseTorrent.Peers.Classes
 				var handshake = new PeerMessage(new HandshakeMessage(TorrentSession.InfoHash, Peer.PeerID!));
 				TorrentSession.OutboundMessageQueues[Peer].TryEnqueue(handshake);
 				Peer.ProtocolStage = PeerProtocolStage.AwaitingHandshake;
+				TorrentSession.AwaitingHandshakePeers.Add(Peer);
 			}
 			catch (Exception ex)
 			{
@@ -71,8 +72,6 @@ namespace WiseTorrent.Peers.Classes
 				int bytesRead = await _stream.ReadAsync(buffer, offset, count, token);
 				if (bytesRead > 0)
 				{
-					TorrentSession.Metrics.RecordReceive(bytesRead);
-					Peer.Metrics.RecordReceive(bytesRead);
 					Peer.LastActive = DateTime.UtcNow;
 				}
 				return bytesRead;
@@ -150,8 +149,6 @@ namespace WiseTorrent.Peers.Classes
 			Buffer.BlockCopy(lengthBuffer, 0, fullMessage, 0, 4);
 			Buffer.BlockCopy(messageBuffer, 0, fullMessage, 4, length);
 
-			TorrentSession.Metrics.RecordReceive(fullMessage.Length);
-			Peer.Metrics.RecordReceive(fullMessage.Length);
 			Peer.LastActive = DateTime.UtcNow;
 
 			return fullMessage;
