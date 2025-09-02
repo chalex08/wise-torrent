@@ -34,7 +34,7 @@
             var state = GetTorrentState(TorrentFilePath);
 
             <tr class="torrent-row">
-                <td>@TorrentFilePath</td>
+                <td>@Path.GetFileNameWithoutExtension(TorrentFilePath)</td>
                 <td>
                     <div class="d-flex align-items-center">
                         <div class="progress flex-grow-1" style="height: 0.75rem;">
@@ -99,8 +99,7 @@
     {
         var selectedFile = FilePickerService.PickFile();
         if (selectedFile == null) return;
-        var torrentName = Path.GetFileNameWithoutExtension(selectedFile);
-        UIStateService.TorrentFilepaths.Add(torrentName);
+        UIStateService.TorrentFilepaths.Add(selectedFile);
     }
 
 
@@ -114,7 +113,15 @@
     async Task Pause(string TorrentFilePath)
     {
         if (string.IsNullOrEmpty(TorrentFilePath)) return;
+
+        var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+        if (session != null)
+        {
+            session.CurrentEvent = EventState.Stopped; // explicitly mark as stopped/paused
+        }
+
         await TorrentEngine.PauseTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
+
         await InvokeAsync(StateHasChanged);
     }
 
