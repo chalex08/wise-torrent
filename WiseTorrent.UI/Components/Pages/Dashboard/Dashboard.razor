@@ -74,12 +74,23 @@
 </table>
 
 @code {
-    int GetProgressPercent(string TorrentFilePath)
+    private System.Timers.Timer? _refreshTimer;
+
+    protected override void OnInitialized()
+    {
+        _refreshTimer = new System.Timers.Timer(1000);
+        _refreshTimer.Elapsed += (s, e) => InvokeAsync(StateHasChanged);
+        _refreshTimer.AutoReset = true;
+        _refreshTimer.Start();
+    }
+
+    double GetProgressPercent(string TorrentFilePath)
     {
         var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
-        return session == null
-            ? 0
-            : (int)(((session.TotalBytes - session.RemainingBytes) / session.TotalBytes) * 100);
+        if (session == null)
+            return 0;
+
+        return Math.Round(((double)(session.TotalBytes - session.RemainingBytes) / session.TotalBytes) * 100, 2);
     }
 
     EventState GetTorrentState(string TorrentFilePath)
@@ -134,5 +145,11 @@
         await TorrentEngine.CancelTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
         UIStateService.TorrentFilepaths.Remove(TorrentFilePath);
         await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Stop();
+        _refreshTimer?.Dispose();
     }
 }
