@@ -105,6 +105,8 @@
 
     void Start(string TorrentFilePath)
     {
+        NotificationService.Show("Download started " + Path.GetFileNameWithoutExtension(TorrentFilePath));
+
         if (string.IsNullOrEmpty(TorrentFilePath)) return;
         TorrentEngine.StartTorrentEngineSession(TorrentFilePath);
         InvokeAsync(StateHasChanged);
@@ -112,6 +114,8 @@
 
     async Task Pause(string TorrentFilePath)
     {
+        NotificationService.Show("Download paused " + Path.GetFileNameWithoutExtension(TorrentFilePath), NotificationType.Info);
+
         if (string.IsNullOrEmpty(TorrentFilePath)) return;
 
         var session = TorrentSessionManager.GetSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
@@ -121,7 +125,6 @@
         }
 
         await TorrentEngine.PauseTorrentEngineSession(Path.GetFileNameWithoutExtension(TorrentFilePath));
-
         await InvokeAsync(StateHasChanged);
     }
 
