@@ -27,31 +27,46 @@
 
 		<div class="form-group mb-3">
 			<label>Peer timeout</label>
-			<input class="form-control" @bind="PeerTimeout" />
+			<input class="form-control"
+				@bind="PeerTimeout"
+				type="number" min="1"
+				@bind:after="@(() => PeerTimeout = Clamp(PeerTimeout))" />
 			<span class="ms-2 text-muted">seconds</span>
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Peer keep-alive interval</label>
-			<input class="form-control" @bind="PeerKeepAliveIntervalSeconds" />
+			<input class="form-control"
+				@bind="PeerKeepAliveIntervalSeconds"
+				type="number" min="1"
+				   @bind:after="@(() => PeerKeepAliveIntervalSeconds = Clamp(PeerKeepAliveIntervalSeconds))" />
 			<span class="ms-2 text-muted">seconds</span>
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Peer state refresh timer</label>
-			<input class="form-control" @bind="PeerStateRefreshTimerSeconds" />
+			<input class="form-control"
+				@bind="PeerStateRefreshTimerSeconds"
+				type="number" min="1"
+				@bind:after="@(() => PeerStateRefreshTimerSeconds = Clamp(PeerStateRefreshTimerSeconds))" />
 			<span class="ms-2 text-muted">seconds</span>
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Peer reconnect cooldown</label>
-			<input class="form-control" @bind="PeerReconnectCooldownSeconds" />
+			<input class="form-control"
+				@bind="PeerReconnectCooldownSeconds"
+				type="number" min="1"
+				@bind:after="@(() => PeerReconnectCooldownSeconds = Clamp(PeerReconnectCooldownSeconds))" />
 			<span class="ms-2 text-muted">seconds</span>
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Max swarm size</label>
-			<input class="form-control" @bind="MaxSwarmSize" />
+			<input class="form-control"
+				@bind="MaxSwarmSize"
+				type="number" min="1"
+				@bind:after="@(() => MaxSwarmSize = Clamp(MaxSwarmSize))" />
 		</div>
 
 		<div class="form-group mb-3">
@@ -110,28 +125,52 @@
 
 		<div class="form-group mb-3">
 			<label>Max outbound message queue size</label>
-			<input class="form-control" @bind="MaxOutboundMessageQueueSize" />
+			<input class="form-control"
+				@bind="MaxOutboundMessageQueueSize"
+				type="number" min="1"
+				@bind:after="@(() => MaxOutboundMessageQueueSize = Clamp(MaxOutboundMessageQueueSize))" />
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Block size</label>
-			<input class="form-control" @bind="BlockSizeBytes" />
+			<div class="input-group">
+				<button type="button" class="btn btn-outline-secondary"
+						@onclick="() => BlockSizeBytes = Clamp(BlockSizeBytes - 4)">
+					-
+				</button>
+				<input class="form-control text-center"
+					   @bind="BlockSizeBytes"
+					   @bind:after="@(() => BlockSizeBytes = Clamp(BlockSizeBytes))" />
+				<button type="button" class="btn btn-outline-secondary"
+						@onclick="() => BlockSizeBytes = Clamp(BlockSizeBytes + 4)">
+					+
+				</button>
+			</div>
 			<span class="ms-2 text-muted">bytes</span>
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Max requests per peer</label>
-			<input class="form-control" @bind="MaxRequestsPerPeer" />
+			<input class="form-control"
+				@bind="MaxRequestsPerPeer"
+				type="number" min="1"
+				@bind:after="@(() => MaxRequestsPerPeer = Clamp(MaxRequestsPerPeer))" />
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Max requests per piece</label>
-			<input class="form-control" @bind="MaxRequestsPerPiece" />
+			<input class="form-control"
+				@bind="MaxRequestsPerPiece"
+				type="number" min="1"
+				@bind:after="@(() => MaxRequestsPerPiece = Clamp(MaxRequestsPerPiece))" />
 		</div>
 
 		<div class="form-group mb-3">
 			<label>Max active pieces</label>
-			<input class="form-control" @bind="MaxActivePieces" />
+			<input class="form-control"
+				@bind="MaxActivePieces"
+				type="number" min="1"
+				@bind:after="@(() => MaxActivePieces = Clamp(MaxActivePieces))" />
 		</div>
 	</fieldset>
 
@@ -204,4 +243,6 @@
 
 		NotificationService.Show("Settings applied!");
 	}
+
+	private int Clamp(int value) => value <= 0 ? 1 : value;
 }
