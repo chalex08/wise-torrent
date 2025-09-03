@@ -20,6 +20,13 @@
 			}
 		</div>
 	</main>
+
+	<div style="padding: 0.5rem 1rem;">
+		<label>
+			<input type="checkbox" @bind="forcePinToBottom" />
+			Stay pinned to bottom
+		</label>
+	</div>
 </div>
 
 <style>
@@ -101,6 +108,7 @@
 </script>
 
 @code {
+	private bool forcePinToBottom = false;
 	private double ProgressPercent = 0;
 	private IReadOnlyList<LogEntry> logs = Array.Empty<LogEntry>();
 	private ElementReference logContainer;
@@ -152,8 +160,8 @@
 		if (shouldScroll)
 		{
 			shouldScroll = false;
-			var isAtBottom = await JS.InvokeAsync<bool>("getScrollState");
-			if (isAtBottom)
+			bool shouldScrollToBottom = forcePinToBottom || await JS.InvokeAsync<bool>("getScrollState");
+			if (shouldScrollToBottom)
 			{
 				await JS.InvokeVoidAsync("scrollToEnd", logContainer);
 			}
