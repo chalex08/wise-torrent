@@ -55,28 +55,53 @@
 		</div>
 
 		<div class="form-group mb-3">
-			<label>Max peer connection threads</label>
-			<input class="form-control" @bind="MaxPeerConnectionThreads" />
+			<label for="maxPeerConnectionThreads">
+				Max peer connection threads: <strong>@MaxPeerConnectionThreads</strong>
+			</label>
+			<input type="range" class="form-range"
+				   id="maxPeerConnectionThreads"
+				   min="1" max="100" step="1"
+				   @bind="MaxPeerConnectionThreads" />
 		</div>
 
 		<div class="form-group mb-3">
-			<label>Max peer receive threads</label>
-			<input class="form-control" @bind="MaxPeerReceiveThreads" />
+			<label for="maxPeerReceiveThreads">
+				Max peer receive threads: <strong>@MaxPeerReceiveThreads</strong>
+			</label>
+			<input type="range" class="form-range"
+				   id="maxPeerReceiveThreads"
+				   min="1" max="100" step="1"
+				   @bind="MaxPeerReceiveThreads" />
 		</div>
 
 		<div class="form-group mb-3">
-			<label>Max peer send threads</label>
-			<input class="form-control" @bind="MaxPeerSendThreads" />
+			<label for="maxPeerSendThreads">
+				Max peer send threads: <strong>@MaxPeerSendThreads</strong>
+			</label>
+			<input type="range" class="form-range"
+				   id="maxPeerSendThreads"
+				   min="1" max="100" step="1"
+				   @bind="MaxPeerSendThreads" />
 		</div>
 
 		<div class="form-group mb-3">
-			<label>Max peer keep alive threads</label>
-			<input class="form-control" @bind="MaxPeerKeepAliveThreads" />
+			<label for="maxPeerKeepAliveThreads">
+				Max peer keep alive threads: <strong>@MaxPeerKeepAliveThreads</strong>
+			</label>
+			<input type="range" class="form-range"
+				   id="maxPeerKeepAliveThreads"
+				   min="1" max="100" step="1"
+				   @bind="MaxPeerKeepAliveThreads" />
 		</div>
 
 		<div class="form-group mb-3">
-			<label>Max peer update state threads</label>
-			<input class="form-control" @bind="MaxPeerUpdateStateThreads" />
+			<label for="maxPeerUpdateStateThreads">
+				Max peer update state threads: <strong>@MaxPeerUpdateStateThreads</strong>
+			</label>
+			<input type="range" class="form-range"
+				   id="maxPeerUpdateStateThreads"
+				   min="1" max="100" step="1"
+				   @bind="MaxPeerUpdateStateThreads" />
 		</div>
 	</fieldset>
 
