@@ -27,6 +27,11 @@
 			Stay pinned to bottom
 		</label>
 	</div>
+	<div style="padding: 0.5rem 1rem;">
+		<button class="btn btn-secondary" @onclick="ScrollToBottom" disabled="@forcePinToBottom">
+			Scroll to Bottom
+		</button>
+	</div>
 </div>
 
 <style>
@@ -90,7 +95,7 @@
 	if (viewer && header) {
 	const windowHeight = window.innerHeight;
 	const headerHeight = header.offsetHeight;
-	const maxHeight = (windowHeight - headerHeight) * 0.85;
+	const maxHeight = (windowHeight - headerHeight) * 0.75;
 	viewer.style.maxHeight = maxHeight + "px";
 	viewer.style.fontSize = fontSize;
 	}
@@ -175,6 +180,11 @@
 		LogLevel.Error => "red",
 		_ => "gray"
 	};
+
+	private async Task ScrollToBottom()
+	{
+		await JS.InvokeVoidAsync("scrollToEnd", logContainer);
+	}
 
 	public async void Dispose()
 	{
