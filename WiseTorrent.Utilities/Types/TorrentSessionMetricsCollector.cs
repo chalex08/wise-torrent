@@ -20,13 +20,13 @@
 
 		public void RecordSend(int byteCount)
 		{
-			Interlocked.Add(ref _totalDownloadedBytes, byteCount);
+			Interlocked.Add(ref _totalUploadedBytes, byteCount);
 			Interlocked.Increment(ref _messagesSent);
 		}
 
 		public void RecordReceive(int byteCount)
 		{
-			Interlocked.Add(ref _totalUploadedBytes, byteCount);
+			Interlocked.Add(ref _totalDownloadedBytes, byteCount);
 			Interlocked.Increment(ref _messagesReceived);
 		}
 

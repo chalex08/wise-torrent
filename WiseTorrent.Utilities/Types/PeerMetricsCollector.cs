@@ -23,13 +23,13 @@ namespace WiseTorrent.Utilities.Types
 
 		public void RecordSend(int byteCount)
 		{
-			Interlocked.Add(ref _uploadedBytes, byteCount);
+			Interlocked.Add(ref _downloadedBytes, byteCount);
 			Interlocked.Increment(ref _messagesSent);
 		}
 
 		public void RecordReceive(int byteCount)
 		{
-			Interlocked.Add(ref _downloadedBytes, byteCount);
+			Interlocked.Add(ref _uploadedBytes, byteCount);
 			Interlocked.Increment(ref _messagesReceived);
 		}
 

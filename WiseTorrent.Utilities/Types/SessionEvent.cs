@@ -2,7 +2,7 @@
 {
 	public class SessionEvent<T>
 	{
-		private readonly List<Action<T>> _listenerActions = new();
+		private readonly ConcurrentSet<Action<T>> _listenerActions = new();
 
 		public void Subscribe(Action<T> listenerAction) => _listenerActions.Add(listenerAction);
 
