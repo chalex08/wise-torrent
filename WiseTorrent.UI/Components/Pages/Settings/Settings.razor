@@ -70,6 +70,15 @@
 		</div>
 
 		<div class="form-group mb-3">
+			<label>Piece request timeout</label>
+			<input class="form-control"
+				   @bind="PieceRequestTimeoutLimitSeconds"
+				   type="number" min="1"
+				   @bind:after="@(() => PieceRequestTimeoutLimitSeconds = Clamp(PieceRequestTimeoutLimitSeconds))" />
+			<span class="ms-2 text-muted">seconds</span>
+		</div>
+
+		<div class="form-group mb-3">
 			<label for="maxPeerConnectionThreads">
 				Max peer connection threads: <strong>@MaxPeerConnectionThreads</strong>
 			</label>
@@ -172,6 +181,45 @@
 				type="number" min="1"
 				@bind:after="@(() => MaxActivePieces = Clamp(MaxActivePieces))" />
 		</div>
+
+		<div class="form-group mb-3">
+			<label>Piece rarity threshold</label>
+			<input class="form-control"
+				   @bind="PieceRarityThreshold"
+				   type="number" min="1"
+				   @bind:after="@(() => PieceRarityThreshold = Clamp(PieceRarityThreshold))" />
+		</div>
+	</fieldset>
+
+	<fieldset class="settings-fieldset mb-4">
+		<legend>Logging</legend>
+
+		<div class="form-group mb-3">
+			<label for="maxLogEntryCount">
+				Max log entry count: <strong>@MaxLogEntriesCount</strong>
+			</label>
+			<input type="range" class="form-range"
+				   id="maxLogEntryCount"
+				   min="250" max="25_000" step="250"
+				   @bind="MaxLogEntriesCount" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Log refresh threshold</label>
+			<input class="form-control"
+				   @bind="LogRefreshThreshold"
+				   type="number" min="1"
+				   @bind:after="@(() => LogRefreshThreshold = Clamp(LogRefreshThreshold))" />
+		</div>
+
+		<div class="form-group mb-3">
+			<label>Log refresh interval seconds</label>
+			<input class="form-control"
+				   @bind="LogRefreshIntervalSeconds"
+				   type="number" min="1"
+				   @bind:after="@(() => LogRefreshIntervalSeconds = Clamp(LogRefreshIntervalSeconds))" />
+			<span class="ms-2 text-muted">seconds</span>
+		</div>
 	</fieldset>
 
 	<div class="settings-actions mt-4 mb-4 d-flex justify-content-end gap-2">
@@ -191,6 +239,7 @@
 	int PeerStateRefreshTimerSeconds { get; set; } = SessionConfig.PeerStateRefreshTimerSeconds.Seconds;
 	int PeerReconnectCooldownSeconds { get; set; } = SessionConfig.PeerReconnectCooldownSeconds.Seconds;
 	int MaxSwarmSize { get; set; } = SessionConfig.MaxSwarmSize;
+	int PieceRequestTimeoutLimitSeconds { get; set; } = SessionConfig.PieceRequestTimeoutLimitSeconds.Seconds;
 	int MaxPeerConnectionThreads { get; set; } = SessionConfig.MaxPeerConnectionThreads;
 	int MaxPeerReceiveThreads { get; set; } = SessionConfig.MaxPeerReceiveThreads;
 	int MaxPeerSendThreads { get; set; } = SessionConfig.MaxPeerSendThreads;
@@ -201,6 +250,10 @@
 	int MaxRequestsPerPeer { get; set; } = SessionConfig.MaxRequestsPerPeer;
 	int MaxRequestsPerPiece { get; set; } = SessionConfig.MaxRequestsPerPiece;
 	int MaxActivePieces { get; set; } = SessionConfig.MaxActivePieces;
+	int PieceRarityThreshold { get; set; } = SessionConfig.PieceRarityThreshold;
+	int MaxLogEntriesCount { get; set; } = SessionConfig.MaxLogEntriesCount;
+	int LogRefreshThreshold { get; set; } = SessionConfig.LogRefreshThreshold;
+	int LogRefreshIntervalSeconds { get; set; } = SessionConfig.LogRefreshIntervalSeconds.Seconds;
 
 	void ResetDefaults() {
 		TorrentStoragePath = SessionConfig.DefaultTorrentStoragePath;
@@ -209,6 +262,7 @@
 		PeerStateRefreshTimerSeconds = SessionConfig.DefaultPeerStateRefreshTimerSeconds.Seconds;
 		PeerReconnectCooldownSeconds = SessionConfig.DefaultPeerReconnectCooldownSeconds.Seconds;
 		MaxSwarmSize = SessionConfig.DefaultMaxSwarmSize;
+		PieceRequestTimeoutLimitSeconds = SessionConfig.DefaultPieceRequestTimeoutLimitSeconds.Seconds;
 		MaxPeerConnectionThreads = SessionConfig.DefaultMaxPeerConnectionThreads;
 		MaxPeerReceiveThreads = SessionConfig.DefaultMaxPeerReceiveThreads;
 		MaxPeerSendThreads = SessionConfig.DefaultMaxPeerSendThreads;
@@ -219,6 +273,10 @@
 		MaxRequestsPerPeer = SessionConfig.DefaultMaxRequestsPerPeer;
 		MaxRequestsPerPiece = SessionConfig.DefaultMaxRequestsPerPiece;
 		MaxActivePieces = SessionConfig.DefaultMaxActivePieces;
+		PieceRarityThreshold = SessionConfig.DefaultPieceRarityThreshold;
+		MaxLogEntriesCount = SessionConfig.DefaultMaxLogEntriesCount;
+		LogRefreshThreshold = SessionConfig.DefaultLogRefreshThreshold;
+		LogRefreshIntervalSeconds = SessionConfig.DefaultLogRefreshIntervalSeconds.Seconds;
 
 		NotificationService.Show("Settings reset to default.", NotificationType.Info);
 	}
@@ -230,6 +288,7 @@
 		SessionConfig.PeerStateRefreshTimerSeconds = TimeSpan.FromSeconds(PeerStateRefreshTimerSeconds);
 		SessionConfig.PeerReconnectCooldownSeconds = TimeSpan.FromSeconds(PeerReconnectCooldownSeconds);
 		SessionConfig.MaxSwarmSize = MaxSwarmSize;
+		SessionConfig.PieceRequestTimeoutLimitSeconds = TimeSpan.FromSeconds(PieceRequestTimeoutLimitSeconds);
 		SessionConfig.MaxPeerConnectionThreads = MaxPeerConnectionThreads;
 		SessionConfig.MaxPeerReceiveThreads = MaxPeerReceiveThreads;
 		SessionConfig.MaxPeerSendThreads = MaxPeerSendThreads;
@@ -240,6 +299,10 @@
 		SessionConfig.MaxRequestsPerPeer = MaxRequestsPerPeer;
 		SessionConfig.MaxRequestsPerPiece = MaxRequestsPerPiece;
 		SessionConfig.MaxActivePieces = MaxActivePieces;
+		SessionConfig.PieceRarityThreshold = PieceRarityThreshold;
+		SessionConfig.MaxLogEntriesCount = MaxLogEntriesCount;
+		SessionConfig.LogRefreshThreshold = LogRefreshThreshold;
+		SessionConfig.LogRefreshIntervalSeconds = TimeSpan.FromSeconds(LogRefreshIntervalSeconds);
 
 		NotificationService.Show("Settings applied!");
 	}
